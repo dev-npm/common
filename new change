@@ -1,0 +1,80 @@
+import { Component, OnInit } from '@angular/core';
+import { FormControl, FormGroup } from '@angular/forms';
+import { UserDataService } from './user-data.service';
+
+@Component({
+  selector: 'app-user-select-form',
+  template: `
+    <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+      <nz-select formControlName="selectedUsers" nzMode="multiple" nzAllowClear nzPlaceHolder="Select users">
+        <nz-option *ngFor="let user of users" [nzValue]="user" [nzLabel]="user.name"></nz-option>
+      </nz-select>
+      <button type="submit">Submit</button>
+    </form>
+  `,
+  styles: []
+})
+export class UserSelectFormComponent implements OnInit {
+  userForm: FormGroup;
+  users = [
+    { id: 1, name: 'testuser' },
+    { id: 2, name: 'user2' },
+    { id: 3, name: 'testuser1' },
+    { id: 4, name: 'user4' }
+  ];
+  initialUsers = new Set();
+  unchangedUsers = new Set();
+
+  constructor(private userDataService: UserDataService) {}
+
+  ngOnInit(): void {
+    this.userForm = new FormGroup({
+      selectedUsers: new FormControl([])
+    });
+
+    this.userForm.get('selectedUsers').valueChanges.subscribe(selectedUsers => {
+      this.updateChangeTracking(selectedUsers);
+    });
+  }
+
+  updateChangeTracking(selectedUsers: any[]): void {
+    const currentIds = new Set(selectedUsers.map(user => user.id));
+
+    if (this.initialUsers.size === 0) {
+      this.initialUsers = new Set(currentIds);
+      this.unchangedUsers = new Set(currentIds); // Initialize unchanged tracking
+    } else {
+      this.unchangedUsers = new Set([...this.unchangedUsers].filter(id => currentIds.has(id)));
+    }
+  }
+
+  onSubmit(): void {
+    const currentUsers = this.userForm.value.selectedUsers;
+    const currentIds = new Set(currentUsers.map(user => user.id));
+    const initialIds = new Set(this.initialUsers);
+
+    const added = currentUsers.filter(user => !initialIds.has(user.id));
+    const removed = [...this.initialUsers].filter(id => !currentIds.has(id));
+        // Completing the onSubmit method
+    const unchanged = [...this.unchangedUsers].map(id => this.users.find(user => user.id === id));
+
+    const submissionData = {
+      added: added,
+      removed: removed.map(id => this.users.find(user => user.id === id)),
+      unchanged: unchanged
+    };
+
+    this.userDataService.updateUserSelections(submissionData).subscribe(
+      response => {
+        console.log('Success:', response);
+        // Reset tracking after successful submission
+        this.initialUsers = new Set(currentUsers.map(user => user.id));
+        this.unchangedUsers = new Set(currentUsers.map(user => user.id));
+      },
+      error => {
+        console.error('Error:', error);
+      }
+    );
+  }
+}
+
