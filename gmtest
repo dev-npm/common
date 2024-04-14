@@ -1,0 +1,80 @@
+import { Component, OnInit } from '@angular/core';
+import { NzSelectModule } from 'ng-zorro-antd/select';
+import { MyService } // Import your service
+
+interface User {
+  id: number;
+  name: string;
+}
+
+interface ChangedItem {
+  user: User; // Changed user object
+  action: 'added' | 'deleted' | 'updated' | 'unchanged'; // Flag for action type
+}
+
+@Component({
+  selector: 'app-my-component',
+  templateUrl: './my-component.html',
+  styleUrls: ['./my-component.css']
+})
+export class MyComponent implements OnInit {
+  selectedItems: User[] = []; // Array to store selected users
+  options: User[] = [
+    { id: 1, name: 'testuser' },
+    { id: 2, name: 'user2' },
+    { id: 3, name: 'testuser1' },
+    { id: 4, name: 'user4' }
+  ]; // Option list
+  existingUsers: User[] = [{ id: 2, name: 'user2' }, { id: 3, name: 'testuser1' }]; // Existing users
+
+  previousSelectedItems: User[] = [];
+
+  constructor(private myService: MyService) { }
+
+  ngOnInit() {
+    // Combine existing users with options (assuming no duplicates by id)
+    this.selectedItems = [...new Set([...this.existingUsers, ...this.options])];
+    this.previousSelectedItems = [...this.selectedItems];
+  }
+
+  onSelectionChange(value: User[]): void {
+    this.selectedItems = value;
+  }
+
+  onSubmit() {
+    const changes: ChangedItem[] = [];
+
+    // Logic to identify changes based on selectedItems and previousSelectedItems (same as onSelectionChange)
+
+    // Implement from here (similar logic to onSelectionChange)
+    value.forEach(item => {
+      if (!this.previousSelectedItems.some(prev => prev.id === item.id)) {
+        changes.push({ user: item, action: 'added' });
+      }
+    });
+
+    // Removed items
+    this.previousSelectedItems.forEach(item => {
+      if (!value.some(user => user.id === item.id)) {
+        changes.push({ user: item, action: 'deleted' });
+      }
+    });
+
+    // Updated items (logic based on your update criteria)
+    const updatedItems = value.filter(item => this.previousSelectedItems.some(prev => prev.id === item.id) &&
+                                               // Add your update condition here (e.g., modified property)
+                                               );
+    updatedItems.forEach(item => changes.push({ user: item, action: 'updated' }));
+
+    // Unchanged items
+    const unchangedItems = value.filter(item => this.previousSelectedItems.some(prev => prev.id === item.id) &&
+                                                !updatedItems.some(user => user.id === item.id));
+    unchangedItems.forEach(item => changes.push({ user: item, action: 'unchanged' }));
+
+    // Send changes to service
+    this.myService.sendChanges(changes);
+
+    // Update previousSelectedItems (optional, depends on your use case)
+    // this.previousSelectedItems = [...value];
+  }
+}
