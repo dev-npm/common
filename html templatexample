@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, table, td, th {
+            font-family: Arial, sans-serif;
+        }
+        .header-table, .content-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        .header-table {
+            background-color: #0078D4;
+            color: white;
+        }
+        .logo-cell {
+            padding: 10px;
+            width: 150px; /* fixed width to accommodate logo image */
+        }
+        .title-cell {
+            text-align: center;
+            padding: 10px;
+        }
+        .info-section {
+            background-color: #eef;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 20px;
+        }
+        .content-table th, .content-table td {
+            border: 1px solid #0078D4;
+            padding: 8px;
+            text-align: left;
+        }
+        .fixed-width {
+            width: 150px; /* Smaller and fixed width for the first column */
+        }
+        .expandable-width {
+            width: auto; /* Allows this column to expand */
+        }
+    </style>
+</head>
+<body>
+    <table class="header-table">
+        <tr>
+            <td class="logo-cell">
+                <img src="https://via.placeholder.com/150x50/0078D4/ffffff?text=Logo" alt="Logo" width="100" height="50">
+            </td>
+            <td class="title-cell">
+                <h1>ZYZ Support Request</h1>
+            </td>
+        </tr>
+    </table>
+    <div class="info-section">
+        <strong>Request:</strong> 12931<br>
+        <strong>Customer Name:</strong> ZYZ Customer Name<br>
+        <strong>Status:</strong> Request is good.
+    </div>
+    <table class="content-table">
+        <thead>
+            <tr>
+                <th class="fixed-width">Form Field</th>
+                <th class="expandable-width">Values Selected</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Issue Type</td>
+                <td>Software Bug</td>
+            </tr>
+            <tr>
+                <td>User ID</td>
+                <td>12345</td>
+            </tr>
+            <tr>
+                <td>Platform</td>
+                <td>Windows 10</td>
+            </tr>
+            <tr>
+                <td>Severity Level</td>
+                <td>High</td>
+            </tr>
+            <tr>
+                <td>Description</td>
+                <td>This is a very long description of the issue that might be around 500 characters. This description explains the problem in detail, covering all aspects of the issue and providing comprehensive insight into what the problem might be.</td>
+            </tr>
+            <tr>
+                <td>Resolution Status</td>
+                <td>Pending</td>
+            </tr>
+            <tr>
+                <td>Assigned To</td>
+                <td>Team A</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
