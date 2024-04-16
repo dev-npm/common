@@ -1,0 +1,56 @@
+import { Router } from '@angular/router';
+import { MsalService } from '@azure/msal-angular';
+
+export function authGuard(router: Router, authService: MsalService): CanActivateFn {
+  return () => {
+    const isAuthenticated = authService.instance.getAllAccounts().length > 0;
+    if (!isAuthenticated) {
+      authService.loginRedirect();
+      return false;
+    }
+    return true;
+  };
+}
+
+
+import { Router } from '@angular/router';
+import { MsalService } from '@azure/msal-angular';
+
+export function roleGuard(router: Router, authService: MsalService): CanActivateFn {
+  return () => {
+    const account = authService.instance.getActiveAccount();
+    const roles = account?.idTokenClaims['roles'];
+    if (roles && roles.includes('Admin')) {
+      return true;
+    } else {
+      router.navigate(['/unauthorized']);
+      return false;
+    }
+  };
+}
+
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { AdminComponent } from './admin/admin.component';
+import { MsalService } from '@azure/msal-angular';
+import { Router } from '@angular/router';
+import { authGuard, roleGuard } from './guards';
+
+const routes: Routes = [
+  {
+    path: 'admin',
+    component: AdminComponent,
+    canActivate: [
+      authGuard(Router, MsalService), 
+      roleGuard(Router, MsalService)
+    ]  // Use the guard functions here
+  },
+  // Other routes...
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule],
+  providers: [MsalService] // Ensure services are provided
+})
+export class AppRoutingModule { }
