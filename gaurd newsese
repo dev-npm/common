@@ -1,0 +1,33 @@
+import { Router, CanActivateFn } from '@angular/router';
+import { MsalService } from '@azure/msal-angular';
+import { inject } from '@angular/core';
+
+export const authGuard: CanActivateFn = () => {
+  const router = inject(Router);
+  const authService = inject(MsalService);
+
+  const isAuthenticated = authService.instance.getAllAccounts().length > 0;
+  if (!isAuthenticated) {
+    authService.loginRedirect();
+    return false;
+  }
+  return true;
+};
+
+import { Router, CanActivateFn } from '@angular/router';
+import { MsalService } from '@azure/msal-angular';
+import { inject } from '@angular/core';
+
+export const roleGuard: CanActivateFn = () => {
+  const router = inject(Router);
+  const authService = inject(MsalService);
+
+  const account = authService.instance.getActiveAccount();
+  const roles = account?.idTokenClaims['roles'];
+  if (roles && roles.includes('Admin')) {
+    return true;
+  } else {
+    router.navigate(['/unauthorized']);
+    return false;
+  }
+};
