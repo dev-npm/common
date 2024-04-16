@@ -1,0 +1,66 @@
+import { Injectable } from '@angular/core';
+import { CanActivate, Router } from '@angular/router';
+import { MsalService } from '@azure/msal-angular';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthGuard implements CanActivate {
+  constructor(private authService: MsalService, private router: Router) {}
+
+  canActivate(): boolean {
+    const isAuthenticated = this.authService.instance.getAllAccounts().length > 0;
+    if (!isAuthenticated) {
+      this.authService.loginRedirect();
+      return false;
+    }
+    return true;
+  }
+}
+
+
+
+import { Injectable } from '@angular/core';
+import { CanActivate, Router } from '@angular/router';
+import { MsalService } from '@azure/msal-angular';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class RoleGuard implements CanActivate {
+  constructor(private authService: MsalService, private router: Router) {}
+
+  canActivate(): boolean {
+    const account = this.authService.instance.getActiveAccount();
+    const roles = account?.idTokenClaims['roles'];
+    if (roles && roles.includes('Admin')) {
+      return true;
+    } else {
+      this.router.navigate(['/unauthorized']);
+      return false;
+    }
+  }
+}
+
+
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { AdminComponent } from './admin/admin.component';
+import { AuthGuard } from './auth.guard';
+import { RoleGuard } from './role.guard';
+
+const routes: Routes = [
+  {
+    path: 'admin',
+    component: AdminComponent,
+    canActivate: [AuthGuard, RoleGuard]  // Both guards are used here
+  },
+  // Other routes...
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule { }
+
