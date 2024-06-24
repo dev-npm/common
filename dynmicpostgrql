@@ -1,0 +1,37 @@
+SQL
+
+DO $$
+DECLARE
+    category_list text[] := '{"Internal-ev", "Internal-nx", "Internal-mw", "Internal-zl", "External-ev"}';
+    col_defs text := '';
+    query text;
+BEGIN
+    -- Construct dynamic column definitions
+    FOR category IN SELECT unnest(category_list) LOOP
+        col_defs := col_defs || format(
+            'SPLIT_PART(COALESCE(ct.%I, ''''), ''||'', 1) AS %I,',
+            category, replace(category, '-', '') || 'PDK' -- Example: 'internalEVPDK'
+        );
+        col_defs := col_defs || format(
+            'SPLIT_PART(COALESCE(ct.%I, ''''), ''||'', 2) AS %I,',
+            category, replace(category, '-', '') || 'Schedule'
+        );
+        col_defs := col_defs || format(
+            'SPLIT_PART(COALESCE(ct.%I, ''''), ''||'', 3) AS %I,',
+            category, replace(category, '-', '') || 'ScheduleDates'
+        );
+    END LOOP;
+
+    -- Remove trailing comma
+    col_defs := rtrim(col_defs, ',');
+
+    -- Build the final query
+    query := format(
+        'SELECT unique_row_name[5] AS vendorName, unique_row_name[6] AS Name, unique_row_name[7] AS DateType, unique_row_name[8] AS Id, %s FROM dynamic_crosstab(%L)',
+        col_defs, 'your_source_sql_here' -- Replace with your actual source query
+    );
+
+    -- Execute the query (or RAISE NOTICE '%' query; to print it for debugging)
+    EXECUTE query;
+END;
+$$;
