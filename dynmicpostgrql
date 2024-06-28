@@ -35,3 +35,26 @@ BEGIN
     EXECUTE query;
 END;
 $$;
+
+  getFriendlyName(columnName: string): string {
+    const columnMappings: { [key: string]: string } = {
+      id: "ID",
+      ipname: "IP Name",
+      datatype: "Data Type",
+      projectid: "Project ID",
+      vendorname: "Vendor Name",
+      techname: "Tech Name",
+      externalevtdk: "External Event TDK",
+      internalevtdk: "Internal Event TDK",
+      externalefvtdk: "External EFV TDK",
+      internalefvtdk: "Internal EFV TDK",
+      collateralitemid: "Collateral Item ID",
+      externalevschedule: "External EV Schedule",
+      internalevschedule: "Internal EV Schedule",
+      externalefvschedule: "External EFV Schedule",
+      internalefvschedule: "Internal EFV Schedule",
+      externalefvscheduledates: "External EFV Schedule Dates",
+      internalefvscheduledates: "Internal EFV Schedule Dates"
+    };
+    return columnMappings[columnName] || columnName;
+  }
