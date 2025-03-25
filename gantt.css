@@ -1,3 +1,25 @@
+<tr>
+  <th rowspan="2" class="sticky-left">IP</th>
+  <ng-container *ngFor="let group of groupedColumns">
+    <th
+      [attr.colspan]="group.children.length"
+      class="quarter-header"
+      [ngStyle]="{ 'background-color': group.color }"
+    >
+      {{ group.label }}
+    </th>
+  </ng-container>
+</tr><tr>
+  <ng-container *ngFor="let group of groupedColumns">
+    <ng-container *ngFor="let col of group.children">
+      <th class="month-header">{{ col.label }}</th>
+    </ng-container>
+  </ng-container>
+</tr>
+
+
+
+
 /* Sticky IP column */
 .sticky-left {
   position: sticky;
