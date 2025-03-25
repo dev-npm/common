@@ -1,0 +1,71 @@
+/* Sticky IP column */
+.sticky-left {
+  position: sticky;
+  left: 0;
+  z-index: 11;
+  background: #fff;
+  font-weight: bold;
+  box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.1);
+}
+
+/* Sticky headers (both row 1 and row 2) */
+thead th {
+  position: sticky;
+  top: 0;
+  background: #f0f2f5;
+  z-index: 10;
+}
+
+/* Quarter header cells (top row) */
+.quarter-header {
+  top: 0;
+  z-index: 12; /* should be higher than default headers */
+}
+
+/* Month header cells (second row) */
+.month-header {
+  top: 40px; /* adjust if your row height changes */
+  z-index: 11;
+}
+
+/* Gantt cell and marker styling */
+.gantt-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  min-height: 40px;
+  overflow: hidden;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.gantt-marker {
+  width: 8px;
+  height: 8px;
+  transform: rotate(45deg);
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.gantt-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gantt-subtext {
+  font-size: 10px;
+  color: #555;
+  text-align: center;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+th, td {
+  min-width: 80px;
+  max-width: 100px;
+  text-align: center;
+  vertical-align: top;
+}
