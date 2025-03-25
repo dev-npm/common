@@ -1,0 +1,58 @@
+<nz-table
+  [nzData]="ganttData"
+  [nzScroll]="{ x: 'max-content', y: '500px' }"
+  nzBordered
+>
+  <thead>
+    <!-- Row 1: Quarter Headers -->
+    <tr>
+      <th rowspan="2" class="sticky-left">IP</th>
+      <ng-container *ngFor="let group of groupedColumns">
+        <th
+          [attr.colspan]="group.children.length"
+          [ngStyle]="{ 'background-color': group.color }"
+        >
+          {{ group.label }}
+        </th>
+      </ng-container>
+    </tr>
+
+    <!-- Row 2: Month Headers -->
+    <tr>
+      <ng-container *ngFor="let group of groupedColumns">
+        <ng-container *ngFor="let col of group.children">
+          <th>{{ col.label }}</th>
+        </ng-container>
+      </ng-container>
+    </tr>
+  </thead>
+
+  <tbody>
+    <tr *ngFor="let row of ganttData">
+      <td class="sticky-left">{{ row.customer }}</td>
+      <ng-container *ngFor="let group of groupedColumns">
+        <ng-container *ngFor="let col of group.children">
+          <td>
+            <ng-container *ngIf="getCellData(row, col.value) as cells">
+              <div class="gantt-cell">
+                <ng-container *ngFor="let cell of cells">
+                  <div class="gantt-item">
+                    <div
+                      class="gantt-marker"
+                      [ngStyle]="{ 'background-color': cell.color }"
+                      nz-tooltip
+                      [nzTooltipTitle]="
+                        cell.release + ' | ' + formatFullDate(cell.date)
+                      "
+                    ></div>
+                    <div class="gantt-subtext">{{ cell.milestone }}</div>
+                  </div>
+                </ng-container>
+              </div>
+            </ng-container>
+          </td>
+        </ng-container>
+      </ng-container>
+    </tr>
+  </tbody>
+</nz-table>
