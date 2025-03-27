@@ -1,0 +1,59 @@
+<nz-select
+  [(ngModel)]="selectedQuarter"
+  (ngModelChange)="filterQuarter()"
+  style="width: 200px; margin-bottom: 16px;"
+  nzPlaceHolder="Select Quarter"
+>
+  <nz-option
+    *ngFor="let q of allQuarters"
+    [nzValue]="q.value"
+    [nzLabel]="q.label"
+  ></nz-option>
+</nz-select>
+
+<!-- 🔄 Loop over filtered quarters -->
+<div *ngFor="let group of groupedColumns" style="margin-bottom: 32px;">
+  <h3 style="margin: 8px 0;">{{ group.label }}</h3>
+
+  <nz-table
+    [nzData]="ganttData"
+    [nzScroll]="{ x: 'max-content', y: '400px' }"
+    [nzPagination]="false"
+    nzBordered
+  >
+    <thead>
+      <tr>
+        <th class="sticky-left ip-column">IP</th>
+        <ng-container *ngFor="let col of group.children">
+          <th>{{ col.label }}</th>
+        </ng-container>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of ganttData">
+        <td class="sticky-left ip-column" nz-tooltip [nzTooltipTitle]="row.customer">
+          {{ row.customer }}
+        </td>
+        <ng-container *ngFor="let col of group.children">
+          <td>
+            <ng-container *ngIf="getCellData(row, col.value) as cells">
+              <div class="gantt-cell">
+                <ng-container *ngFor="let cell of cells">
+                  <div class="gantt-item">
+                    <div
+                      class="gantt-marker"
+                      [ngStyle]="{ 'background-color': cell.color }"
+                      nz-tooltip
+                      [nzTooltipTitle]="cell.release + ' | ' + formatFullDate(cell.date)"
+                    ></div>
+                    <div class="gantt-subtext">{{ cell.milestone }}</div>
+                  </div>
+                </ng-container>
+              </div>
+            </ng-container>
+          </td>
+        </ng-container>
+      </tr>
+    </tbody>
+  </nz-table>
+</div>
