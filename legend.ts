@@ -1,3 +1,36 @@
+// Master milestone set with 24 bright colors
+const milestoneColorMap: { [key: string]: string } = {
+  'MSDK-A1': '#FF5733', // Bright Orange-Red
+  'MSDK-A2': '#36CFC9', // Bright Aqua
+  'MSDK-A3': '#FFC107', // Bright Yellow
+  'MSDK-A4': '#52C41A', // Bright Green
+  'MSDK-A5': '#FA8C16', // Bright Orange
+  'MSDK-B1': '#2F54EB', // Bright Blue
+  'MSDK-B2': '#9254DE', // Bright Purple
+  'MSDK-B3': '#13C2C2', // Bright Cyan
+  'MSDK-B4': '#FADB14', // Bright Lime
+  'MSDK-B5': '#F5222D', // Bright Red
+  'MSDK-C1': '#E91E63', // Bright Pink
+  'MSDK-C2': '#9C27B0', // Bright Magenta
+  'MSDK-C3': '#00BCD4', // Bright Teal
+  'MSDK-C4': '#4CAF50', // Bright Green
+  'MSDK-C5': '#FFEB3B', // Bright Gold
+  'MSDK-D1': '#03A9F4', // Bright Sky Blue
+  'MSDK-D2': '#FF9800', // Bright Deep Orange
+  'MSDK-D3': '#795548', // Bright Brown
+  'MSDK-D4': '#607D8B', // Bright Blue-Gray
+  'MSDK-D5': '#FF4081', // Bright Hot Pink
+  'MSDK-E1': '#FFC0CB', // Bright Pinkish
+  'MSDK-E2': '#8B5CF6', // Bright Violet
+  'MSDK-E3': '#1E90FF', // Bright Dodger Blue
+  'MSDK-E4': '#32CD32', // Bright Lime Green
+  'MSDK-E5': '#FF6347'  // Bright Tomato
+};
+
+// Default fallback color if milestone is not found
+const defaultColor = '#BFBFBF'; // Gray fallback
+
+
 // Create a Set of unique milestone names
 const uniqueMilestones = Array.from(new Set(apiResponse.map(item => item.milestone)));
 
