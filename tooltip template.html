@@ -1,0 +1,61 @@
+<ng-template #tooltipTpl>
+  <div class="tooltip-wrapper">
+    <!-- Header Row -->
+    <div class="tooltip-header">
+      <span class="tooltip-cell header">Milestone</span>
+      <span class="tooltip-cell header">Release</span>
+      <span class="tooltip-cell header">Date</span>
+      <span class="tooltip-cell header">WW</span>
+    </div>
+
+    <!-- Data Rows -->
+    <div *ngFor="let r of hoveredReleases" class="tooltip-row">
+      <span class="tooltip-cell">{{ r.milestone }}</span>
+      <span class="tooltip-cell">{{ r.release }}</span>
+      <span class="tooltip-cell">{{ formatFullDate(r.date) }}</span>
+      <span class="tooltip-cell">{{ getWeekNumber(r.date) }}</span>
+    </div>
+  </div>
+</ng-template>
+
+/* Tooltip container */
+.tooltip-wrapper {
+  padding: 8px;
+  background-color: white;
+  border: 1px solid #e8e8e8;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-width: 220px;
+}
+
+/* Header row styling */
+.tooltip-header {
+  display: flex;
+  font-weight: bold;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+/* Data rows */
+.tooltip-row {
+  display: flex;
+  padding: 2px 0;
+}
+
+/* Each cell in a row */
+.tooltip-cell {
+  flex: 1;
+  padding: 4px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* Header cell styling */
+.tooltip-cell.header {
+  background-color: #fafafa;
+  font-weight: bold;
+}
+
+/* Optional: Align text to center if needed */
+.tooltip-cell:nth-child(4) {
+  text-align: center;
+}
