@@ -1,112 +1,90 @@
+<nz-table [nzData]="ganttData" [nzScroll]="{ x: '1200px' }" [nzPagination]="false" nzBordered>
+  <thead>
+    <tr>
+      <th class="ip-column">IP</th>
+      <ng-container *ngFor="let group of allGroupedColumns">
+        <th [attr.colspan]="group.children.length" class="quarter-header">{{ group.label }}</th>
+      </ng-container>
+    </tr>
+    <tr>
+      <th class="ip-column"></th>
+      <ng-container *ngFor="let group of allGroupedColumns">
+        <th *ngFor="let col of group.children" class="month-header">{{ col.label }}</th>
+      </ng-container>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let row of ganttData">
+      <td class="ip-column">{{ row.customer }}</td>
+      <ng-container *ngFor="let group of allGroupedColumns">
+        <td *ngFor="let col of group.children">
+          <ng-container *ngIf="getCellData(row, col.value) as cells">
+            <div class="gantt-cell">
+              <ng-container *ngFor="let cell of cells">
+                <div class="gantt-item">
+                  <div
+                    class="gantt-marker"
+                    [ngStyle]="{ 'background-color': cell.color }"
+                    nz-tooltip
+                    [nzTooltipTitle]="cell.release + ' | ' + formatFullDate(cell.date)"
+                  ></div>
+                  <div class="gantt-subtext">{{ cell.milestone }}</div>
+                </div>
+              </ng-container>
+            </div>
+          </ng-container>
+        </td>
+      </ng-container>
+    </tr>
+  </tbody>
+</nz-table>
+
+/* IP column styling */
 .ip-column {
   width: 100px;
-  max-width: 100px;
   min-width: 100px;
+  max-width: 100px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: bold;
-}
-
-th,
-td {
-  width: 36px;
-  min-width: 36px;
-  max-width: 36px;
-  height: 40px;
   text-align: center;
-  vertical-align: top;
-  padding: 0;
-  box-sizing: border-box;
 }
 
-/* Compact cell with stacked diamonds */
+/* Quarter header styling */
+.quarter-header {
+  text-align: center;
+  font-weight: bold;
+  background-color: #fafafa;
+}
+
+/* Month header styling */
+.month-header {
+  text-align: center;
+  font-weight: normal;
+  background-color: #f5f5f5;
+}
+
+/* Gantt cell styling */
 .gantt-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: start;
-  gap: 2px;
-  height: 100%;
-  overflow: hidden;
+  justify-content: center;
+  height: 40px;
+  width: 40px;
+  min-width: 40px;
+  max-width: 40px;
+  padding: 2px;
+  box-sizing: border-box;
+  border: 1px solid #f0f0f0;
 }
 
+/* Gantt item styling */
 .gantt-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-.gantt-marker {
-  width: 6px;
-  height: 6px;
-  transform: rotate(45deg);
-  border-radius: 1px;
-}
-
-.gantt-subtext {
-  font-size: 9px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-
-<nz-select
-  [(ngModel)]="selectedQuarter"
-  (ngModelChange)="filterQuarter()"
-  style="width: 200px; margin-bottom: 16px;"
-  nzPlaceHolder="Select Quarter"
->
-  <nz-option
-    *ngFor="let q of allQuarters"
-    [nzValue]="q.value"
-    [nzLabel]="q.label"
-  ></nz-option>
-</nz-select>
-
-<!-- 🔄 Loop over filtered quarters -->
-<div *ngFor="let group of groupedColumns" style="margin-bottom: 32px;">
-  <h3 style="margin: 8px 0;">{{ group.label }}</h3>
-
-  <nz-table
-    [nzData]="ganttData"
-    [nzScroll]="{ x: 'max-content', y: '400px' }"
-    [nzPagination]="false"
-    nzBordered
-  >
-    <thead>
-      <tr>
-        <th class="sticky-left ip-column">IP</th>
-        <ng-container *ngFor="let col of group.children">
-          <th>{{ col.label }}</th>
-        </ng-container>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let row of ganttData">
-        <td class="sticky-left ip-column" nz-tooltip [nzTooltipTitle]="row.customer">
-          {{ row.customer }}
-        </td>
-        <ng-container *ngFor="let col of group.children">
-          <td>
-            <ng-container *ngIf="getCellData(row, col.value) as cells">
-              <div class="gantt-cell">
-                <ng-container *ngFor="let cell of cells">
-                  <div class="gantt-item">
-                    <div
-                      class="gantt-marker"
-                      [ngStyle]="{ 'background-color': cell.color }"
-                      nz-tooltip
-                      [nzTooltipTitle]="cell.release + ' | ' + formatFullDate(cell.date)"
-                    ></div>
-                    <div class="gantt-subtext">{{ cell.milestone }}</div>
-                  </div>
-                </ng-container>
-              </div>
-            </ng-container>
-          </td>
-        </ng-container>
-      </tr>
-    </tbody>
-  </nz-table>
-</div>
+  margin-bottom:
+::contentReference[oaicite:2]{index=2}
+ 
