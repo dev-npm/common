@@ -1,0 +1,60 @@
+const express = require('express');
+const axios = require('axios');
+const cheerio = require('cheerio');
+
+const app = express();
+const PORT = 3000;
+
+app.get('/api/scrape', async (req, res) => {
+  try {
+    const { data } = await axios.get('https://example.com'); // Replace with actual site
+    const $ = cheerio.load(data);
+    const result = [];
+
+    // Loop through all <tr class="contntrow1">
+    $('tr.contntrow1').each((_, row) => {
+      const recordId = $(row).find('td.contntWide.colalloc').text().trim();
+
+      // For each <td class="contntWide"> inside this row
+      $(row).find('td.contntWide').each((_, td) => {
+        const div = $(td).find('div.complete, div.open');
+
+        if (div.length > 0) {
+          const detailText = div.text().trim();
+
+          const anchor = div.find('a');
+          const onMouseOver = anchor.attr('onmouseover') || '';
+          const match = onMouseOver.match(/showDetail\((.*?)\)/);
+
+          if (match) {
+            const argsRaw = match[1]; // e.g., 'THISDATAISGOOD',1111,tbd,tbd,ww34\2004
+            const args = argsRaw
+              .split(',')
+              .map(s => s.replace(/['"\\]/g, '').trim());
+
+            result.push({
+              recordId: recordId || null,
+              detailText: detailText || null,
+              showDetailArgs: {
+                arg1: args[0] || null, // e.g., THISDATAISGOOD
+                arg2: args[1] || null, // e.g., 1111
+                arg3: args[2] || null,
+                arg4: args[3] || null,
+                arg5: args[4] || null
+              }
+            });
+          }
+        }
+      });
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('Scraping failed:', err.message);
+    res.status(500).send('Scraping failed');
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
