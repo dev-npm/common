@@ -1,0 +1,83 @@
+using Microsoft.AspNetCore.Mvc;
+using HtmlAgilityPack;
+using System.Net.Http;
+
+[ApiController]
+[Route("api/[controller]")]
+public class ScraperController : ControllerBase
+{
+    private readonly HttpClient _httpClient;
+
+    public ScraperController(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Scrape()
+    {
+        var url = "https://example.com"; // Change this to the actual URL
+        var html = await _httpClient.GetStringAsync(url);
+
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+
+        var rows = doc.DocumentNode.SelectNodes("//tr[contains(@class, 'contntrow1')]");
+        if (rows == null)
+            return Ok(new List<object>());
+
+        var results = new List<object>();
+
+        foreach (var row in rows)
+        {
+            var recordIdNode = row.SelectSingleNode(".//td[contains(@class, 'colalloc')]");
+            var recordId = recordIdNode?.InnerText.Trim();
+
+            var tdNodes = row.SelectNodes(".//td[contains(@class, 'contntWide')]");
+            if (tdNodes == null) continue;
+
+            foreach (var td in tdNodes)
+            {
+                var divNode = td.SelectSingleNode(".//div[contains(@class, 'autoHW') and (contains(@class, 'complete') or contains(@class, 'open'))]");
+                if (divNode == null) continue;
+
+                var detailText = divNode.InnerText.Trim();
+
+                var aNode = divNode.SelectSingleNode(".//a");
+                var onMouseOver = aNode?.GetAttributeValue("onmouseover", "");
+
+                string[] args = null;
+                if (!string.IsNullOrEmpty(onMouseOver))
+                {
+                    var match = System.Text.RegularExpressions.Regex.Match(onMouseOver, @"showDetail\((.*?)\)");
+                    if (match.Success)
+                    {
+                        args = match.Groups[1].Value
+                            .Split(',')
+                            .Select(s => s.Replace("'", "").Replace("\\", "").Trim())
+                            .ToArray();
+                    }
+                }
+
+                if (recordId != null && args != null)
+                {
+                    results.Add(new
+                    {
+                        recordId,
+                        detailText,
+                        showDetailArgs = new
+                        {
+                            arg1 = args.ElementAtOrDefault(0),
+                            arg2 = args.ElementAtOrDefault(1),
+                            arg3 = args.ElementAtOrDefault(2),
+                            arg4 = args.ElementAtOrDefault(3),
+                            arg5 = args.ElementAtOrDefault(4),
+                        }
+                    });
+                }
+            }
+        }
+
+        return Ok(results);
+    }
+}
