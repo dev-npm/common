@@ -1,0 +1,53 @@
+# ------------------------------
+# Stage 1: Base runtime image
+# ------------------------------
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+
+# Install curl for healthchecks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+USER app
+WORKDIR /app
+EXPOSE 8080
+
+# Add Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+# ------------------------------
+# Stage 2: Build stage
+# ------------------------------
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Release
+
+WORKDIR /src
+COPY ["DG.API/DG.API.csproj", "DG.API/"]
+WORKDIR /src/DG.API
+RUN dotnet restore "DG.API.csproj"
+
+WORKDIR /src
+COPY . .
+
+WORKDIR /src/DG.API
+RUN dotnet build "DG.API.csproj" -c $BUILD_CONFIGURATION -o /app/build --no-restore -m
+
+# ------------------------------
+# Stage 3: Publish stage
+# ------------------------------
+FROM build AS publish
+ARG BUILD_CONFIGURATION=Release
+RUN dotnet publish "DG.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish --no-restore -m /p:UseAppHost=false
+
+# ------------------------------
+# Stage 4: Final runtime image
+# ------------------------------
+FROM base AS final
+WORKDIR /app
+
+# (Optional Hardening)
+ENV DOTNET_EnableDiagnostics=0
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
+
+COPY --from=publish /app/publish .
+
+ENTRYPOINT ["dotnet", "DG.API.dll"]
