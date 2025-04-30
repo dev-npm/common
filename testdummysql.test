@@ -1,0 +1,215 @@
+
+-- ============================================
+-- Row Status Table
+-- ============================================
+
+CREATE TABLE row_status (
+    status_id SMALLINT PRIMARY KEY,
+    status_name VARCHAR(50) NOT NULL UNIQUE
+);
+
+INSERT INTO row_status (status_id, status_name) VALUES
+(1, 'Active'),
+(2, 'Inactive');
+
+-- ============================================
+-- Organization Type and Tier
+-- ============================================
+
+CREATE TABLE organization_type (
+    type_id SMALLINT PRIMARY KEY,
+    type_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE tier (
+    tier_id SMALLINT PRIMARY KEY,
+    tier_level SMALLINT NOT NULL UNIQUE
+);
+
+-- ============================================
+-- Company and Category
+-- ============================================
+
+CREATE TABLE company (
+    company_id SERIAL PRIMARY KEY,
+    company_name VARCHAR(255) NOT NULL UNIQUE,
+    company_description TEXT,
+    row_status_id SMALLINT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (row_status_id) REFERENCES row_status(status_id)
+);
+
+CREATE TABLE company_category (
+    category_id SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    category_name VARCHAR(255) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE company_category_mapping (
+    company_id INT NOT NULL,
+    category_id SMALLINT NOT NULL,
+    PRIMARY KEY (company_id, category_id),
+    FOREIGN KEY (company_id) REFERENCES company(company_id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES company_category(category_id) ON DELETE CASCADE
+);
+
+-- ============================================
+-- Organization and Contacts
+-- ============================================
+
+CREATE TABLE organization (
+    organization_id SERIAL PRIMARY KEY,
+    organization_name VARCHAR(255) NOT NULL UNIQUE,
+    type_id SMALLINT NOT NULL,
+    tier_id SMALLINT NOT NULL,
+    row_status_id SMALLINT NOT NULL DEFAULT 1,
+    FOREIGN KEY (type_id) REFERENCES organization_type(type_id),
+    FOREIGN KEY (tier_id) REFERENCES tier(tier_id),
+    FOREIGN KEY (row_status_id) REFERENCES row_status(status_id)
+);
+
+CREATE TABLE organization_contact (
+    contact_id SERIAL PRIMARY KEY,
+    organization_id INT NOT NULL,
+    contact_name VARCHAR(255) NOT NULL,
+    contact_email VARCHAR(255) NOT NULL,
+    FOREIGN KEY (organization_id) REFERENCES organization(organization_id)
+);
+
+-- ============================================
+-- Process Node and Project
+-- ============================================
+
+CREATE TABLE process_node (
+    process_node_id SERIAL PRIMARY KEY,
+    node_name VARCHAR(255) NOT NULL UNIQUE,
+    row_status_id SMALLINT NOT NULL DEFAULT 1,
+    FOREIGN KEY (row_status_id) REFERENCES row_status(status_id)
+);
+
+CREATE TABLE project (
+    project_id SERIAL PRIMARY KEY,
+    project_name VARCHAR(255) NOT NULL UNIQUE,
+    project_description TEXT,
+    organization_id INT NOT NULL,
+    contact_id INT NOT NULL,
+    process_node_id INT NOT NULL,
+    row_status_id SMALLINT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (organization_id) REFERENCES organization(organization_id),
+    FOREIGN KEY (contact_id) REFERENCES organization_contact(contact_id),
+    FOREIGN KEY (process_node_id) REFERENCES process_node(process_node_id),
+    FOREIGN KEY (row_status_id) REFERENCES row_status(status_id)
+);
+
+-- ============================================
+-- Cost Models and Revisions
+-- ============================================
+
+CREATE TABLE cost_model (
+    cost_model_id SERIAL PRIMARY KEY,
+    model_name VARCHAR(255) NOT NULL UNIQUE,
+    estimated_cost NUMERIC(18,2),
+    active_revision_id INT,
+    is_available_for_quoting BOOLEAN NOT NULL DEFAULT TRUE,
+    row_status_id SMALLINT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (row_status_id) REFERENCES row_status(status_id)
+);
+
+CREATE TABLE cost_model_revision (
+    revision_id SERIAL PRIMARY KEY,
+    cost_model_id INT NOT NULL,
+    revision_number INT NOT NULL,
+    company_id INT NOT NULL,
+    category_id SMALLINT,
+    cost_matrix_json JSONB NOT NULL,
+    comments TEXT,
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (cost_model_id) REFERENCES cost_model(cost_model_id) ON DELETE CASCADE,
+    FOREIGN KEY (company_id) REFERENCES company(company_id),
+    FOREIGN KEY (category_id) REFERENCES company_category(category_id),
+    UNIQUE (cost_model_id, revision_number)
+);
+
+CREATE TABLE cost_model_revision_change_log (
+    log_id SERIAL PRIMARY KEY,
+    cost_model_id INT NOT NULL,
+    old_revision_id INT,
+    new_revision_id INT NOT NULL,
+    changed_by VARCHAR(100),
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    comments TEXT,
+    FOREIGN KEY (cost_model_id) REFERENCES cost_model(cost_model_id),
+    FOREIGN KEY (old_revision_id) REFERENCES cost_model_revision(revision_id),
+    FOREIGN KEY (new_revision_id) REFERENCES cost_model_revision(revision_id)
+);
+
+-- ============================================
+-- Quote Status and Quote Tables (Two-Phase FK)
+-- ============================================
+
+CREATE TABLE quote_status (
+    status_id SMALLINT PRIMARY KEY,
+    status_name VARCHAR(50) NOT NULL UNIQUE
+);
+
+INSERT INTO quote_status (status_id, status_name) VALUES
+(1, 'Draft'),
+(2, 'Customer Review'),
+(3, 'Accepted'),
+(4, 'Rejected'),
+(5, 'Cancelled');
+
+CREATE TABLE quote (
+    quote_id SERIAL PRIMARY KEY,
+    quote_code VARCHAR(50) NOT NULL,
+    project_id INT NOT NULL,
+    organization_id INT NOT NULL,
+    active_version_id INT,
+    quote_name VARCHAR(255),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (organization_id, project_id, quote_code)
+);
+
+ALTER TABLE quote
+ADD CONSTRAINT fk_quote_project FOREIGN KEY (project_id) REFERENCES project(project_id),
+ADD CONSTRAINT fk_quote_org FOREIGN KEY (organization_id) REFERENCES organization(organization_id);
+
+CREATE TABLE quote_version (
+    version_id SERIAL PRIMARY KEY,
+    quote_id INT NOT NULL,
+    version_number INT NOT NULL,
+    status_id SMALLINT NOT NULL,
+    created_by VARCHAR(100),
+    comments TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (quote_id) REFERENCES quote(quote_id) ON DELETE CASCADE,
+    FOREIGN KEY (status_id) REFERENCES quote_status(status_id),
+    UNIQUE (quote_id, version_number)
+);
+
+ALTER TABLE quote
+ADD CONSTRAINT fk_quote_active_version
+FOREIGN KEY (active_version_id)
+REFERENCES quote_version(version_id);
+
+CREATE TABLE quote_item (
+    quote_item_id SERIAL PRIMARY KEY,
+    version_id INT NOT NULL,
+    cost_model_id INT NOT NULL,
+    captured_revision_id INT NOT NULL,
+    quantity INT NOT NULL,
+    unit_price NUMERIC(18,2) NOT NULL,
+    total_amount NUMERIC(18,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
+    FOREIGN KEY (version_id) REFERENCES quote_version(version_id),
+    FOREIGN KEY (cost_model_id) REFERENCES cost_model(cost_model_id),
+    FOREIGN KEY (captured_revision_id) REFERENCES cost_model_revision(revision_id)
+);
