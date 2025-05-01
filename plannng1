@@ -83,3 +83,27 @@ ganttData = rawData.map(item => {
   align-items: center;
   min-height: 20px;
 }
+
+quarters = [
+  {
+    label: '2024 Q1',
+    months: [new Date('2024-01-01'), new Date('2024-02-01'), new Date('2024-03-01')]
+  },
+  {
+    label: '2024 Q2',
+    months: [new Date('2024-04-01'), new Date('2024-05-01'), new Date('2024-06-01')]
+  },
+  {
+    label: '2024 Q3',
+    months: [new Date('2024-07-01'), new Date('2024-08-01'), new Date('2024-09-01')]
+  },
+  {
+    label: '2024 Q4',
+    months: [new Date('2024-10-01'), new Date('2024-11-01'), new Date('2024-12-01')]
+  },
+  {
+    label: '2025 Q1',
+    months: [new Date('2025-01-01'), new Date('2025-02-01'), new Date('2025-03-01')]
+  }
+];
+
