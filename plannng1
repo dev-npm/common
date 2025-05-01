@@ -1,0 +1,85 @@
+milestoneColors = {
+  earlyView: '#2f54eb',
+  updatedView: '#fa8c16',
+  earlyFinalView: '#13c2c2',
+  finalView: '#52c41a',
+  iconReport: '#722ed1'
+};
+
+ganttData = rawData.map(item => {
+  const markers: { [key: string]: any[] } = {};
+  for (const key of Object.keys(this.milestoneColors)) {
+    const date = item[key];
+    if (date) {
+      const month = date.slice(0, 7); // '2024-04'
+      if (!markers[month]) markers[month] = [];
+      markers[month].push({
+        milestone: key,
+        date,
+        color: this.milestoneColors[key]
+      });
+    }
+  }
+  return {
+    name: item.Name,
+    markers
+  };
+});
+
+
+
+<table class="gantt-table">
+  <thead>
+    <tr>
+      <th rowspan="2">Name</th>
+      <ng-container *ngFor="let q of quarters">
+        <th [attr.colspan]="q.months.length">{{ q.label }}</th>
+      </ng-container>
+    </tr>
+    <tr>
+      <ng-container *ngFor="let q of quarters">
+        <th *ngFor="let m of q.months">{{ m | date: 'MMM' }}</th>
+      </ng-container>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let row of ganttData">
+      <td>{{ row.name }}</td>
+      <ng-container *ngFor="let q of quarters">
+        <td *ngFor="let m of q.months">
+          <div class="gantt-cell">
+            <ng-container *ngFor="let marker of row.markers[m | date:'yyyy-MM'] || []">
+              <div
+                class="gantt-marker"
+                [ngStyle]="{ 'background-color': marker.color }"
+                nz-tooltip
+                [nzTooltipTitle]="marker.milestone + ' - ' + marker.date"
+              ></div>
+            </ng-container>
+          </div>
+        </td>
+      </ng-container>
+    </tr>
+  </tbody>
+</table>
+.gantt-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.gantt-table th, .gantt-table td {
+  border: 1px solid #ccc;
+  text-align: center;
+  padding: 6px;
+}
+.gantt-marker {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin: 2px auto;
+}
+.gantt-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 20px;
+}
