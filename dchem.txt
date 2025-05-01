@@ -1,0 +1,48 @@
+Database Schema Review Report
+Overview
+This review highlights key issues found in the current database schema and provides recommendations based on database normalization principles, data integrity, auditability, and scalability. The assessment is structured around standard design principles and common industry patterns.
+1. Naming Conventions and Domain Modeling
+Issue: Table names are inconsistent and not aligned with business entities.
+Impact: Poor readability, maintainability, and domain misalignment.
+Recommendation: Adopt consistent, singular, and domain-driven table names (e.g., Quote, Customer, QuoteVersion).
+2. Normalization and 3NF Violations
+Issue 1: Status values and similar attributes are stored as plain text, leading to data redundancy.
+Issue 2: In quote versioning, quote_id is repeated across rows with different versions but without a normalized versioning strategy.
+Violation: Third Normal Form (3NF) - due to transitive dependencies where non-key attributes depend on non-primary key columns.
+Recommendation: Normalize status/lookup fields into separate reference tables. Separate Quote from QuoteVersion to properly model versioning. Ensure non-key attributes depend on the full primary key.
+3. Lack of Soft Delete Capability
+Issue: No support for logical deletion.
+Impact: Inability to track deleted records or restore them if needed.
+Recommendation: Implement a RowStatusId (FK to a RowStatus table) or IsDeleted flag to support soft delete and lifecycle management.
+4. Auditability Gaps
+Issue: Schema lacks standard auditing columns like CreatedBy, CreatedOn, UpdatedBy, UpdatedOn.
+Impact: No traceability for data changes or user actions.
+Recommendation: Include standard audit trail fields on all transactional and reference tables.
+5. Improper Data Types
+Issue: Overuse of BIGINT (int8) for columns where smaller types like SMALLINT (int2) or INTEGER (int4) would suffice.
+Impact: Unnecessary memory/storage usage and potential performance penalties.
+Recommendation: Use smallest appropriate data type for each field.
+6. Oversized Text Fields
+Issue: Fields like VARCHAR(500) are used where much smaller limits (e.g., VARCHAR(50)) would suffice.
+Impact: Poor space efficiency and lack of alignment with business rules.
+Recommendation: Define column lengths based on actual data constraints and validation logic.
+7. Foreign Key & Integrity Constraints Missing
+Issue: Key relationships (e.g., status, quote, customer) are not enforced via foreign keys.
+Impact: Risk of orphaned records and data integrity issues.
+Recommendation: Define all expected FK constraints between tables to ensure referential integrity.
+Recommended Schema for Quote Versioning
+Tables:
+- Quote: quote_id (PK), customer_id (FK), created_by, created_on, row_status_id, etc.
+- QuoteVersion: quote_version_id (PK), quote_id (FK), version_number, quote_amount, status_id, is_latest, etc.
+- Customer: customer_id (PK), customer_name, ...
+- Status / RowStatus: status_id / row_status_id (PK), label
+Summary of Issues & Fixes
+Area | Issue | Recommendation
+---|---|---
+Naming | Inconsistent, non-domain names | Use singular, domain-aligned names
+Normalization | 3NF violations, redundant text fields | Use FK lookups, normalize quote versions
+Soft Deletes | No logical deletion | Add RowStatusId or IsDeleted
+Audit Trail | Missing CreatedBy, UpdatedBy, etc. | Add standard auditing columns
+Data Types | Overuse of BIGINT | Use smallest necessary numeric types
+Column Sizing | Oversized VARCHAR fields | Define limits based on expected data
+Foreign Keys | Missing relationships | Add FK constraints for integrity
