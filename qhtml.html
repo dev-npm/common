@@ -1,0 +1,100 @@
+
+# 🧾 Quote Creation and Edit Lifecycle — Technical Flow
+
+## 🔹 Tables Involved
+
+| Table | Purpose |
+|-------|---------|
+| `quote` | Logical container for a quote across versions |
+| `quote_version` | Tracks versioning, status transitions |
+| `quote_item` | Stores line-level quote content tied to cost models |
+| `cost_model` | Active pricing logic (points to latest revision) |
+| `cost_model_revision` | Snapshot of pricing structure used in a quote |
+
+---
+
+## 🔷 1. Quote Creation (Initial Add)
+
+### 💡 Trigger:
+User initiates a quote for a project + organization in the UI.
+
+### 📋 Steps:
+
+| Step | Action | Table | Logic |
+|------|--------|-------|-------|
+| 1 | App creates new quote | `quote` | quote_id is generated |
+| 2 | App creates version 1 | `quote_version` | version_id, version_number = 1 |
+| 3 | User adds line items | `quote_item` | Each captures `cost_model_id` + `captured_revision_id` |
+| 4 | Status updated to Draft | `quote_version` | status_id = 1 |
+| 5 | Version is submitted for review | `quote_version` | status_id = 2 |
+| 6 | App sets `active_version_id` | `quote` | quote.active_version_id = version_id |
+
+### 🔗 ID Propagation
+
+- `quote_id` → into `quote_version`
+- `version_id` → into `quote_item`
+- `cost_model_id` → from UI
+- `captured_revision_id` → from backend: `cost_model.active_revision_id`
+
+---
+
+## 🔷 2. In-Place Editing
+
+### 💡 When Allowed:
+- Only when `quote_version.status_id = Draft`
+
+### ✅ Permitted:
+- Add/change/remove items in `quote_item`
+- Modify quantity, cost_model, notes
+
+### ❌ Not Allowed:
+- When version is in Customer Review or Accepted
+
+---
+
+## 🔷 3. Quote Edit (New Version)
+
+### 💡 Trigger:
+Quote is already in review or accepted, user wants changes
+
+### 📋 Steps:
+
+| Step | Action | Table | Logic |
+|------|--------|-------|-------|
+| 1 | New version created | `quote_version` | version_number incremented |
+| 2 | Items cloned from last version | `quote_item` | Same cost_model_id, same captured_revision_id |
+| 3 | Items updated if needed | `quote_item` | New qty or cost_model |
+| 4 | New revision_id captured if cost_model changed | `quote_item` | Look up from cost_model.active_revision_id |
+| 5 | Version submitted | `quote_version` | Status = Customer Review |
+| 6 | Active version pointer updated | `quote` | quote.active_version_id = new version_id |
+
+---
+
+## 🔷 4. Captured Revision Rules
+
+| When | What is set |
+|------|-------------|
+| On item create | `captured_revision_id = cost_model.active_revision_id` |
+| On item clone | Keep same revision_id |
+| On cost model change | Fetch new active revision and store |
+
+---
+
+## 🔁 ID Flow Summary
+
+| FK Flow | Description |
+|---------|-------------|
+| `quote_version.quote_id` → `quote.quote_id` | Ties version to quote |
+| `quote_item.version_id` → `quote_version.version_id` | Ties item to version |
+| `quote_item.cost_model_id` → `cost_model.cost_model_id` | Used pricing logic |
+| `quote_item.captured_revision_id` → `cost_model_revision.revision_id` | Frozen snapshot |
+| `quote.active_version_id` → `quote_version.version_id` | Current live version |
+
+---
+
+## 🔐 Integrity Rules
+
+- One `active_version_id` per quote
+- `captured_revision_id` is immutable
+- Accepted/Reviewed versions are locked
+- In-place editing only in Draft
