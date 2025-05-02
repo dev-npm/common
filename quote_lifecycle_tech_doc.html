@@ -1,0 +1,149 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quote Lifecycle Tech Documentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            line-height: 1.6;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f5f5f5;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+<h1>🧾 Quote Creation and Edit Lifecycle — Technical Flow</h1>
+
+<h2>🔹 Tables Involved</h2>
+
+<p>| Table | Purpose |
+|-------|---------|
+| <code>quote</code> | Logical container for a quote across versions |
+| <code>quote_version</code> | Tracks versioning, status transitions |
+| <code>quote_item</code> | Stores line-level quote content tied to cost models |
+| <code>cost_model</code> | Active pricing logic (points to latest revision) |
+| <code>cost_model_revision</code> | Snapshot of pricing structure used in a quote |</p>
+
+<hr />
+
+<h2>🔷 1. Quote Creation (Initial Add)</h2>
+
+<h3>💡 Trigger:</h3>
+
+<p>User initiates a quote for a project + organization in the UI.</p>
+
+<h3>📋 Steps:</h3>
+
+<p>| Step | Action | Table | Logic |
+|------|--------|-------|-------|
+| 1 | App creates new quote | <code>quote</code> | quote<em>id is generated |
+| 2 | App creates version 1 | <code>quote_version</code> | version</em>id, version<em>number = 1 |
+| 3 | User adds line items | <code>quote_item</code> | Each captures <code>cost_model_id</code> + <code>captured_revision_id</code> |
+| 4 | Status updated to Draft | <code>quote_version</code> | status</em>id = 1 |
+| 5 | Version is submitted for review | <code>quote_version</code> | status<em>id = 2 |
+| 6 | App sets <code>active_version_id</code> | <code>quote</code> | quote.active</em>version<em>id = version</em>id |</p>
+
+<h3>🔗 ID Propagation</h3>
+
+<ul>
+<li><code>quote_id</code> → into <code>quote_version</code></li>
+<li><code>version_id</code> → into <code>quote_item</code></li>
+<li><code>cost_model_id</code> → from UI</li>
+<li><code>captured_revision_id</code> → from backend: <code>cost_model.active_revision_id</code></li>
+</ul>
+
+<hr />
+
+<h2>🔷 2. In-Place Editing</h2>
+
+<h3>💡 When Allowed:</h3>
+
+<ul>
+<li>Only when <code>quote_version.status_id = Draft</code></li>
+</ul>
+
+<h3>✅ Permitted:</h3>
+
+<ul>
+<li>Add/change/remove items in <code>quote_item</code></li>
+<li>Modify quantity, cost_model, notes</li>
+</ul>
+
+<h3>❌ Not Allowed:</h3>
+
+<ul>
+<li>When version is in Customer Review or Accepted</li>
+</ul>
+
+<hr />
+
+<h2>🔷 3. Quote Edit (New Version)</h2>
+
+<h3>💡 Trigger:</h3>
+
+<p>Quote is already in review or accepted, user wants changes</p>
+
+<h3>📋 Steps:</h3>
+
+<p>| Step | Action | Table | Logic |
+|------|--------|-------|-------|
+| 1 | New version created | <code>quote_version</code> | version<em>number incremented |
+| 2 | Items cloned from last version | <code>quote_item</code> | Same cost</em>model<em>id, same captured</em>revision<em>id |
+| 3 | Items updated if needed | <code>quote_item</code> | New qty or cost</em>model |
+| 4 | New revision<em>id captured if cost</em>model changed | <code>quote_item</code> | Look up from cost<em>model.active</em>revision<em>id |
+| 5 | Version submitted | <code>quote_version</code> | Status = Customer Review |
+| 6 | Active version pointer updated | <code>quote</code> | quote.active</em>version<em>id = new version</em>id |</p>
+
+<hr />
+
+<h2>🔷 4. Captured Revision Rules</h2>
+
+<p>| When | What is set |
+|------|-------------|
+| On item create | <code>captured_revision_id = cost_model.active_revision_id</code> |
+| On item clone | Keep same revision_id |
+| On cost model change | Fetch new active revision and store |</p>
+
+<hr />
+
+<h2>🔁 ID Flow Summary</h2>
+
+<p>| FK Flow | Description |
+|---------|-------------|
+| <code>quote_version.quote_id</code> → <code>quote.quote_id</code> | Ties version to quote |
+| <code>quote_item.version_id</code> → <code>quote_version.version_id</code> | Ties item to version |
+| <code>quote_item.cost_model_id</code> → <code>cost_model.cost_model_id</code> | Used pricing logic |
+| <code>quote_item.captured_revision_id</code> → <code>cost_model_revision.revision_id</code> | Frozen snapshot |
+| <code>quote.active_version_id</code> → <code>quote_version.version_id</code> | Current live version |</p>
+
+<hr />
+
+<h2>🔐 Integrity Rules</h2>
+
+<ul>
+<li>One <code>active_version_id</code> per quote</li>
+<li><code>captured_revision_id</code> is immutable</li>
+<li>Accepted/Reviewed versions are locked</li>
+<li>In-place editing only in Draft</li>
+</ul>
+
+</body>
+</html>
