@@ -1,0 +1,26 @@
+📝 ✅ User Story: Add QUOTE Field ID to the UI with Validation
+User Story
+As a user managing project quotes,
+I want to enter a unique Quote Field ID on the UI,
+so that each quote can be distinctly tracked and referenced across the system.
+
+✅ Acceptance Criteria
+A new input field labeled Quote Field ID is added to the Quote creation/edit form.
+
+The field must be:
+
+Required.
+
+Unique (no duplicate IDs in the system).
+
+Alphanumeric, 6–10 characters.
+
+If a duplicate or invalid ID is entered, an inline error is shown with a helpful message.
+
+The field is validated on both client and server side.
+
+The UI should prevent submission unless the Quote Field ID is valid and unique.
+
+The field is stored in the backend database upon successful submission.
+
+The field is displayed in the quote summary and searchable in the list view.
