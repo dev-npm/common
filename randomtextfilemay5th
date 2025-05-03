@@ -1,0 +1,186 @@
+import { Component, OnInit } from '@angular/core';
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css']
+})
+export class AppComponent implements OnInit {
+  allGroupedColumns = [
+    {
+      label: '2024 Q1',
+      children: [
+        { label: 'Jan', value: '2024-01' },
+        { label: 'Feb', value: '2024-02' },
+        { label: 'Mar', value: '2024-03' }
+      ]
+    },
+    {
+      label: '2024 Q2',
+      children: [
+        { label: 'Apr', value: '2024-04' },
+        { label: 'May', value: '2024-05' },
+        { label: 'Jun', value: '2024-06' }
+      ]
+    },
+    {
+      label: '2024 Q3',
+      children: [
+        { label: 'Jul', value: '2024-07' },
+        { label: 'Aug', value: '2024-08' },
+        { label: 'Sep', value: '2024-09' }
+      ]
+    },
+    {
+      label: '2024 Q4',
+      children: [
+        { label: 'Oct', value: '2024-10' },
+        { label: 'Nov', value: '2024-11' },
+        { label: 'Dec', value: '2024-12' }
+      ]
+    }
+  ];
+
+  milestoneData = [
+    {
+      name: 'Physical 1',
+      milestones: [
+        { date: '2024-04', label: 'finalView', color: '#1890ff' }
+      ]
+    },
+    {
+      name: 'Physical 2',
+      milestones: [
+        { date: '2024-04', label: 'finalView', color: '#1890ff' }
+      ]
+    }
+  ];
+
+ 
+  ];
+
+  commitData: any[] = [];
+
+  ngOnInit(): void {
+    this.commitData = this.transformCommitData(this.rawCommitData);
+  }
+
+  transformCommitData(dataset: any[]): any[] {
+    return dataset.map(entry => {
+      const commits = [];
+
+      ['o_int_commit', 'int_commit', 'int_actual', 'is_commit', 'is_actual'].forEach(key => {
+        const commit = entry[key];
+        if (commit?.date) {
+          const [month, year] = commit.date.split('/');
+          commits.push({
+            date: `${year}-${month.padStart(2, '0')}`,
+            label: key,
+            color: this.getCommitColor(key)
+          });
+        }
+      });
+
+      return {
+        name: entry.Name,
+        commits
+      };
+    });
+  }
+
+  getCommitColor(type: string): string {
+    switch (type) {
+      case 'o_int_commit': return '#d4380d';
+      case 'int_commit': return '#9254de';
+      case 'int_actual': return '#73d13d';
+      case 'is_commit': return '#722ed1';
+      case 'is_actual': return '#13c2c2';
+      default: return '#595959';
+    }
+  }
+
+  getMarkerCell(data: any[], month: string) {
+    return data.filter(d => d.date.startsWith(month));
+  }<div class="gantt-wrapper">
+  <table class="gantt-header">
+    <thead>
+      <tr>
+        <th rowspan="2" class="sticky-col">Name</th>
+        <ng-container *ngFor="let group of allGroupedColumns">
+          <th [attr.colspan]="group.children.length">{{ group.label }}</th>
+        </ng-container>
+      </tr>
+      <tr>
+        <ng-container *ngFor="let group of allGroupedColumns">
+          <th *ngFor="let col of group.children">{{ col.label }}</th>
+        </ng-container>
+      </tr>
+    </thead>
+  </table>
+
+  <nz-table [nzData]="milestoneData" [nzPagination]="false" [nzShowHeader]="false" nzBordered [nzScroll]="{ x: '1000px', y: '200px' }">
+    <thead></thead>
+    <tbody>
+      <tr *ngFor="let row of milestoneData">
+        <td class="sticky-col">{{ row.name }}</td>
+        <ng-container *ngFor="let group of allGroupedColumns">
+          <td *ngFor="let col of group.children">
+            <ng-container *ngFor="let m of getMarkerCell(row.milestones, col.value)">
+              <div class="dot" [style.background]="m.color" [nz-tooltip]="m.label"></div>
+            </ng-container>
+          </td>
+        </ng-container>
+      </tr>
+    </tbody>
+  </nz-table>
+
+  <nz-table [nzData]="commitData" [nzPagination]="false" [nzShowHeader]="false" nzBordered [nzScroll]="{ x: '1000px', y: '200px' }">
+    <thead></thead>
+    <tbody>
+      <tr *ngFor="let row of commitData">
+        <td class="sticky-col">{{ row.name }}</td>
+        <ng-container *ngFor="let group of allGroupedColumns">
+          <td *ngFor="let col of group.children">
+            <ng-container *ngFor="let c of getMarkerCell(row.commits, col.value)">
+              <div class="dot" [style.background]="c.color" [nz-tooltip]="c.label"></div>
+            </ng-container>
+          </td>
+        </ng-container>
+      </tr>
+    </tbody>
+  </nz-table>
+</div>
+.gantt-wrapper {
+  overflow-x: auto;
+}
+
+.gantt-header {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 100;
+}
+
+.sticky-col {
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 10;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin: 2px auto;
+}
+
+}
+
+
+
+
