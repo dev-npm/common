@@ -1,0 +1,21 @@
+
+Edit quote from Internal review.
+
+flowchart TD
+    QUOTE_VERSION_OLD["QUOTE_VERSION v1 (Customer Review)"] --> NEW_QUOTE_VERSION["Insert new QUOTE_VERSION v1.1 (Internal Review)"]
+
+    NEW_QUOTE_VERSION --> NEW_ITEM_1["Insert new QUOTE_ITEM 403 (Matrix Edited)"]
+    NEW_QUOTE_VERSION --> NEW_ITEM_2["Insert new QUOTE_ITEM 404 (Qty Changed Only)"]
+
+    NEW_ITEM_1 --> BASE_MODEL_A["Look up COST_MODEL A"]
+    BASE_MODEL_A --> BASE_REV_A["Look up COST_MODEL_REVISION A"]
+    BASE_REV_A --> CLONE_CM_REV_1["Clone: Insert QUOTE_COST_MODEL_REVISION (new matrix, v1.1, Active)"]
+    CLONE_CM_REV_1 --> DEACTIVATE_OLD["Update old QUOTE_COST_MODEL_REVISION (Inactive)"]
+
+    NEW_ITEM_2 --> REUSE_CM_REV_2["Reuse existing QUOTE_COST_MODEL_REVISION (no matrix change)"]
+
+    style NEW_QUOTE_VERSION fill:#ffd,stroke:#333
+    style NEW_ITEM_1 fill:#efe,stroke:#333
+    style NEW_ITEM_2 fill:#efe,stroke:#333
+    style CLONE_CM_REV_1 fill:#f9f,stroke:#333
+    style REUSE_CM_REV_2 fill:#cfc,stroke:#333
