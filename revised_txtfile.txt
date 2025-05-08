@@ -1,0 +1,57 @@
+
+-- quote
+CREATE TABLE quote (
+    quote_id INT PRIMARY KEY,
+    project_id INT NOT NULL,
+    organization_id INT NOT NULL,
+    quote_code VARCHAR(50) NOT NULL,
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES project(project_id),
+    FOREIGN KEY (organization_id) REFERENCES organization(organization_id)
+);
+
+-- quote_version
+CREATE TABLE quote_version (
+    version_id INT PRIMARY KEY,
+    quote_id INT NOT NULL,
+    version_number VARCHAR(10) NOT NULL,
+    status_id INT NOT NULL,
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (quote_id) REFERENCES quote(quote_id)
+);
+
+-- quote_item
+CREATE TABLE quote_item (
+    item_id INT PRIMARY KEY,
+    version_id INT NOT NULL,
+    quantity INT NOT NULL,
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (version_id) REFERENCES quote_version(version_id)
+);
+
+-- quote_cost_model_revision
+CREATE TABLE quote_cost_model_revision (
+    quote_cost_model_id INT PRIMARY KEY,
+    quote_id INT NOT NULL,
+    quote_item_id INT NOT NULL,
+    version_number VARCHAR(10),
+    source_cost_model_id INT NOT NULL,
+    source_revision_id INT NOT NULL,
+    company_id INT,
+    category_id INT,
+    burden VARCHAR(20),
+    estimated_cost NUMERIC(12, 2),
+    cost_matrix_json JSONB NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (quote_id) REFERENCES quote(quote_id),
+    FOREIGN KEY (quote_item_id) REFERENCES quote_item(item_id),
+    FOREIGN KEY (source_cost_model_id) REFERENCES cost_model(cost_model_id),
+    FOREIGN KEY (source_revision_id) REFERENCES cost_model_revision(revision_id),
+    FOREIGN KEY (company_id) REFERENCES company(company_id),
+    FOREIGN KEY (category_id) REFERENCES company_category(category_id)
+);
