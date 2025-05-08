@@ -1,4 +1,28 @@
+Step-by-step Insert Flow
 
+ Scenario: Edit Quote in Customer Review Status
+Existing QUOTE ID = 100
+
+Status = Customer Review
+
+Current version = 'v1', version ID = 201
+
+Two items:
+
+Item 1 → Matrix is edited
+
+Item 2 → Only quantity is changed (cost model is reused)
+
+New version will be: v1.1
+
+New quote version will have status = Internal Review
+Step	Table	Action
+1️⃣	QUOTE_VERSION	Insert v1.1 with status_id = Internal Review
+2️⃣	QUOTE_ITEM (Item 1)	New row inserted (edited matrix)
+3️⃣	QUOTE_ITEM (Item 2)	New row inserted (quantity changed)
+4️⃣	QUOTE_COST_MODEL_REVISION (Item 1)	New cloned row created with derived_model_label = InfraModel_Q100_v1.1, is_active = true
+5️⃣	QUOTE_COST_MODEL_REVISION (Item 1, previous)	is_active = false
+6️⃣	QUOTE_COST_MODEL_REVISION (Item 2)	Reused — no new row inserted
 Edit quote from Internal review.
 
 flowchart TD
