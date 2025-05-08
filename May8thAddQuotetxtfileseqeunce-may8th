@@ -1,0 +1,51 @@
+
+
+sequenceDiagram
+    autonumber
+    participant UI
+    participant DB_QUOTE
+    participant DB_QUOTE_VERSION
+    participant DB_QUOTE_ITEM
+    participant DB_QUOTE_COST_MODEL_REVISION
+    participant DB_COST_MODEL
+    participant DB_COST_MODEL_REVISION
+
+    UI->>DB_QUOTE: INSERT INTO QUOTE
+    UI->>DB_QUOTE_VERSION: INSERT INTO QUOTE_VERSION (v1)
+
+    UI->>DB_QUOTE_ITEM: INSERT INTO QUOTE_ITEM (item 1 - qty 3)
+    UI->>DB_COST_MODEL: SELECT base model A (e.g., InfraModel)
+    UI->>DB_COST_MODEL_REVISION: SELECT latest revision for model A
+    UI->>DB_QUOTE_COST_MODEL_REVISION: INSERT cloned model A as QUOTE_COST_MODEL_REVISION (v1)
+
+    UI->>DB_QUOTE_ITEM: INSERT INTO QUOTE_ITEM (item 2 - qty 5)
+    UI->>DB_COST_MODEL: SELECT base model B (e.g., AppDevModel)
+    UI->>DB_COST_MODEL_REVISION: SELECT latest revision for model B
+    UI->>DB_QUOTE_COST_MODEL_REVISION: INSERT cloned model B as QUOTE_COST_MODEL_REVISION (v1)
+
+    Note over DB_QUOTE_COST_MODEL_REVISION: Each clone includes derived_model_label like InfraModel_Q100_v1
+
+
+
+flowchart TD
+    UI[USER INTERFACE: Submit Create Quote Form] --> QUOTE["Insert into QUOTE"]
+    QUOTE --> QUOTE_VERSION["Insert into QUOTE_VERSION"]
+    
+    QUOTE_VERSION --> QUOTE_ITEM_1["Insert into QUOTE_ITEM (Item 1)"]
+    QUOTE_VERSION --> QUOTE_ITEM_2["Insert into QUOTE_ITEM (Item 2)"]
+
+    QUOTE_ITEM_1 --> COST_MODEL_A["Select COST_MODEL A (baseline)"]
+    COST_MODEL_A --> COST_MODEL_REVISION_A["Select latest COST_MODEL_REVISION A"]
+    COST_MODEL_REVISION_A --> QUOTE_COST_MODEL_REV_1["Clone & Insert into QUOTE_COST_MODEL_REVISION (for Item 1)"]
+
+    QUOTE_ITEM_2 --> COST_MODEL_B["Select COST_MODEL B (baseline)"]
+    COST_MODEL_B --> COST_MODEL_REVISION_B["Select latest COST_MODEL_REVISION B"]
+    COST_MODEL_REVISION_B --> QUOTE_COST_MODEL_REV_2["Clone & Insert into QUOTE_COST_MODEL_REVISION (for Item 2)"]
+
+    style QUOTE fill:#dff,stroke:#333
+    style QUOTE_VERSION fill:#ffd,stroke:#333
+    style QUOTE_ITEM_1 fill:#efe,stroke:#333
+    style QUOTE_ITEM_2 fill:#efe,stroke:#333
+    style QUOTE_COST_MODEL_REV_1 fill:#f9f,stroke:#333
+    style QUOTE_COST_MODEL_REV_2 fill:#f9f,stroke:#333
+
