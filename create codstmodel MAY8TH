@@ -11,3 +11,10 @@ flowchart TD
     B --> C[Input New Matrix or Updated Cost Inputs]
     C --> D[Insert into COST_MODEL_REVISION with next version number]
     D --> E[Update COST_MODEL.active_revision_id to new revision]
+
+flowchart TD
+    A[User Starts New Quote] --> B[Select Project and Organization]
+    B --> C[Choose Cost Model Template from Baseline Pool]
+    C --> D[System Creates Snapshot of Selected Template]
+    D --> E[User Adds Quantity and Adjusts Cost Inputs]
+    E --> F[Quote is Created and Saved]
