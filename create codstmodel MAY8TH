@@ -1,0 +1,13 @@
+flowchart TD
+    A[User starts Cost Model Creation] --> B[Input model name and metadata]
+    B --> C[Insert into COST_MODEL with model ID]
+    C --> D[Input cost matrix and pricing data]
+    D --> E[Insert into COST_MODEL_REVISION as version 1]
+    E --> F[Update COST_MODEL with active revision ID]
+
+
+flowchart TD
+    A[User Edits Existing Cost Model] --> B[Select Existing COST_MODEL]
+    B --> C[Input New Matrix or Updated Cost Inputs]
+    C --> D[Insert into COST_MODEL_REVISION with next version number]
+    D --> E[Update COST_MODEL.active_revision_id to new revision]
