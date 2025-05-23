@@ -353,3 +353,154 @@ public class CustomerController : ControllerBase
     }
 }
 
+
+*********** wuth cout
+CREATE OR REPLACE FUNCTION sync_customers_from_batch(p_batch_id TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  ins_names TEXT[];
+  upd_names TEXT[];
+BEGIN
+  -- 1) Gather names of new inserts
+  SELECT ARRAY_AGG(r.customer_name)
+    INTO ins_names
+  FROM (
+    SELECT DISTINCT r.customer_name
+    FROM customer_raw_upload r
+    WHERE r.upload_batch_id = p_batch_id
+      AND NOT EXISTS (
+        SELECT 1
+        FROM customer c
+        WHERE c.normalized_name = r.normalized_name
+          AND c.batch_id IS NOT NULL
+      )
+  ) AS r;
+
+  -- 2) Perform the INSERT for new rows
+  INSERT INTO customer (
+    customer_name, normalized_name, batch_id,
+    customer_type_id, supplier_id, process_id,
+    is_from_api, is_deleted, updated_at
+  )
+  SELECT
+    r.customer_name,
+    r.normalized_name,
+    p_batch_id,
+    2,  -- Planning
+    (SELECT id FROM supplier WHERE name = r.supplier_text),
+    (SELECT id FROM process  WHERE name = r.process_text),
+    TRUE,
+    FALSE,
+    NOW()
+  FROM customer_raw_upload r
+  WHERE r.upload_batch_id = p_batch_id
+    AND NOT EXISTS (
+      SELECT 1
+      FROM customer c
+      WHERE c.normalized_name = r.normalized_name
+        AND c.batch_id IS NOT NULL
+    );
+
+  -- 3) Gather names of rows to UPDATE
+  SELECT ARRAY_AGG(r.customer_name)
+    INTO upd_names
+  FROM (
+    SELECT DISTINCT r.customer_name
+    FROM customer_raw_upload r
+    JOIN customer c
+      ON c.normalized_name = r.normalized_name
+     AND c.batch_id IS NOT NULL
+    WHERE r.upload_batch_id = p_batch_id
+  ) AS r;
+
+  -- 4) Perform the UPDATE for existing rows
+  UPDATE customer AS c
+  SET
+    customer_name = r.customer_name,
+    batch_id      = p_batch_id,
+    supplier_id   = (SELECT id FROM supplier WHERE name = r.supplier_text),
+    process_id    = (SELECT id FROM process  WHERE name = r.process_text),
+    is_from_api   = TRUE,
+    is_deleted    = FALSE,
+    updated_at    = NOW()
+  FROM customer_raw_upload AS r
+  WHERE r.upload_batch_id = p_batch_id
+    AND c.normalized_name = r.normalized_name
+    AND c.batch_id IS NOT NULL;
+
+  -- 5) Soft‐delete omitted imports (as before)
+  UPDATE customer AS c
+  SET
+    is_deleted = TRUE,
+    deleted_at = NOW(),
+    updated_at = NOW()
+  WHERE c.customer_type_id = 2
+    AND c.is_from_api = TRUE
+    AND NOT EXISTS (
+      SELECT 1
+      FROM customer_raw_upload r
+      WHERE r.upload_batch_id = p_batch_id
+        AND r.normalized_name = c.normalized_name
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM customer_project_map m
+      WHERE m.customer_id = c.customer_id
+        AND m.active = TRUE
+    );
+
+  -- 6) Return a JSON summary
+  RETURN JSONB_BUILD_OBJECT(
+    'inserted_count', COALESCE(ARRAY_LENGTH(ins_names, 1), 0),
+    'updated_count',  COALESCE(ARRAY_LENGTH(upd_names, 1), 0),
+    'inserted_names', ins_names,
+    'updated_names',  upd_names
+  );
+END;
+$$ LANGUAGE plpgsql;
+// Services/CustomerSyncService.cs
+public class CustomerSyncService
+{
+    private readonly string _connectionString;
+
+    public CustomerSyncService(IConfiguration config)
+    {
+        _connectionString = config.GetConnectionString("Default");
+    }
+
+    public async Task<SyncResult> SyncBatchAsync(string batchId)
+    {
+        const string sql = "SELECT sync_customers_from_batch(@BatchId);";
+        await using var conn = new NpgsqlConnection(_connectionString);
+        var json = await conn.ExecuteScalarAsync<string>(sql, new { BatchId = batchId });
+        
+        // Deserialize the JSONB result into our SyncResult
+        return JsonSerializer.Deserialize<SyncResult>(json, new JsonSerializerOptions {
+            PropertyNameCaseInsensitive = true
+        })!;
+    }
+}
+// Controllers/CustomerController.cs
+[ApiController]
+[Route("api/[controller]")]
+public class CustomerController : ControllerBase
+{
+    private readonly ExcelImportService  _excel;
+    private readonly CustomerSyncService _sync;
+
+    public CustomerController(
+        ExcelImportService excel,
+        CustomerSyncService sync)
+    {
+        _excel = excel;
+        _sync  = sync;
+    }
+
+    [HttpPost("sync-batch")]
+    public async Task<IActionResult> SyncBatch([FromQuery] string batchId)
+    {
+        var result = await _sync.SyncBatchAsync(batchId);
+        return Ok(result);
+    }
+}
+
