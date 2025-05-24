@@ -114,6 +114,42 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 &&&&&&&&&&&&&&&&&&&&&&&&&&
+[HttpPost("upload-excel")]
+public async Task<IActionResult> UploadExcel(
+    IFormFile file,
+    [FromQuery] string? batchId // optional: allow client to pass one
+)
+{
+    if (file == null || file.Length == 0)
+        return BadRequest("Please attach an Excel file.");
+
+    // 1) Generate if not provided
+    batchId ??= DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+
+    // 2) Save file to temp path
+    var path = Path.Combine(Path.GetTempPath(), file.FileName);
+    await using (var fs = System.IO.File.Create(path))
+        await file.CopyToAsync(fs);
+
+    // 3) Stage & validate
+    var validation = await _excel.ImportAndValidateAsync(path, batchId);
+    if (!validation.IsValid)
+    {
+        return Ok(new {
+            batchId,
+            validation.MissingSuppliers,
+            validation.MissingProcesses,
+            isValid = false
+        });
+    }
+
+    // 4) Success — staging is complete
+    return Ok(new {
+        batchId,
+        isValid = true,
+        message = "File staged successfully. You may now sync."
+    });
+}
 
 // Services/ExcelImportService.cs
 using ClosedXML.Excel;
