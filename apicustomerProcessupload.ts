@@ -647,3 +647,221 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+******************************************************************&&&
+  // Controllers/CustomerController.cs
+using Microsoft.AspNetCore.Mvc;
+
+[ApiController]
+[Route("api/[controller]")]
+public class CustomerController : ControllerBase
+{
+    private readonly ExcelImportService _excel;
+
+    public CustomerController(ExcelImportService excel)
+        => _excel = excel;
+
+    [HttpPost("upload-excel")]
+    public async Task<IActionResult> UploadExcel(
+        IFormFile file,
+        [FromQuery] string? batchId)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest("No file uploaded.");
+
+        // 1) Generate batchId if not provided
+        batchId ??= DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+
+        // 2) Save to temp path
+        var path = Path.Combine(Path.GetTempPath(), file.FileName);
+        await using(var fs = System.IO.File.Create(path))
+            await file.CopyToAsync(fs);
+
+        // 3) Import & validate
+        var validation = await _excel.ImportAndValidateAsync(path, batchId);
+
+        return Ok(new {
+            batchId,
+            validation.IsValid,
+            validation.MissingSuppliers,
+            validation.MissingProcesses,
+            message = validation.IsValid
+                ? "Staging complete. Ready to sync."
+                : "Please fix the missing lookups."
+        });
+    }
+}
+
+
+public class ExcelImportService
+{
+    private readonly AppDbContext _db;
+    public ExcelImportService(AppDbContext db) => _db = db;
+
+    public async Task<LookupValidationResult> ImportAndValidateAsync(string filePath, string batchId)
+    {
+        // Start a transaction so we can roll back on validation errors
+        await using var tx = await _db.Database.BeginTransactionAsync();
+
+        try
+        {
+            // 1) Clear any old staging for this batch
+            await _db.Database.ExecuteSqlRawAsync(
+                "DELETE FROM customer_raw_upload WHERE upload_batch_id = {0}", batchId);
+
+            // 2) Read Excel into list
+            var rows = new List<CustomerRawUpload>();
+            using var wb = new XLWorkbook(filePath);
+            var sheet = wb.Worksheet(1);
+            foreach (var row in sheet.RangeUsed().RowsUsed().Skip(1))
+            {
+                var name = row.Cell(1).GetString().Trim();
+                rows.Add(new CustomerRawUpload {
+                    UploadBatchId  = batchId,
+                    CustomerName   = name,
+                    NormalizedName = name.ToLowerInvariant(),
+                    SupplierText   = row.Cell(2).GetString().Trim(),
+                    ProcessText    = row.Cell(3).GetString().Trim(),
+                    UploadedAt     = DateTime.UtcNow
+                });
+            }
+
+            // 3) Bulk insert
+            await _db.BulkInsertAsync(rows);
+
+            // 4) Validate lookups
+            var validation = await ValidateLookupsAsync(batchId);
+
+            if (!validation.IsValid)
+            {
+                // Validation failed → roll back the staging insert
+                await tx.RollbackAsync();
+                return validation;
+            }
+
+            // All good → commit staging rows
+            await tx.CommitAsync();
+            return validation;
+        }
+        catch
+        {
+            // On any exception, roll back staging and rethrow
+            await tx.RollbackAsync();
+            throw;
+        }
+    }
+
+    private async Task<LookupValidationResult> ValidateLookupsAsync(string batchId)
+    {
+        var result = new LookupValidationResult();
+
+        // Suppliers
+        var stagingSuppliers = await _db.CustomerRawUpload
+            .Where(r => r.UploadBatchId == batchId)
+            .Select(r => r.SupplierText)
+            .Distinct()
+            .ToListAsync();
+
+        var existingSuppliers = await _db.Suppliers
+            .Select(s => s.Name)
+            .ToListAsync();
+
+        result.MissingSuppliers = stagingSuppliers
+            .Except(existingSuppliers, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // Processes
+        var stagingProcesses = await _db.CustomerRawUpload
+            .Where(r => r.UploadBatchId == batchId)
+            .Select(r => r.ProcessText)
+            .Distinct()
+            .ToListAsync();
+
+        var existingProcesses = await _db.Processes
+            .Select(p => p.Name)
+            .ToListAsync();
+
+        result.MissingProcesses = stagingProcesses
+            .Except(existingProcesses, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return result;
+    }
+}
+anggg
+
+// src/app/components/upload-excel/upload-excel.component.ts
+import { Component } from '@angular/core';
+import { UploadExcelService } from '../../services/upload-excel.service';
+import { UploadResponse } from '../../models/upload-response';
+
+@Component({
+  selector: 'app-upload-excel',
+  templateUrl: './upload-excel.component.html',
+})
+export class UploadExcelComponent {
+  selectedFile: File | null = null;
+  response: UploadResponse | null = null;
+  uploading = false;
+  error: string | null = null;
+
+  constructor(private svc: UploadExcelService) {}
+
+  onFileChange(event: Event) {
+    const inp = event.target as HTMLInputElement;
+    this.selectedFile = inp.files?.[0] ?? null;
+    this.response = null;
+    this.error = null;
+  }
+
+  upload() {
+    if (!this.selectedFile) return;
+    this.uploading = true;
+    this.svc.upload(this.selectedFile).subscribe({
+      next: res => {
+        this.response = res;
+        this.uploading = false;
+      },
+      error: err => {
+        this.error = err.message || 'Upload failed';
+        this.uploading = false;
+      }
+    });
+  }
+}
+// src/app/models/upload-response.ts
+export interface UploadResponse {
+  batchId: string;
+  isValid: boolean;
+  missingSuppliers: string[];
+  missingProcesses: string[];
+  message?: string;
+}
+<!-- src/app/components/upload-excel/upload-excel.component.html -->
+<div>
+  <input type="file"
+         (change)="onFileChange($event)"
+         accept=".xlsx,.xls" />
+  <button (click)="upload()"
+          [disabled]="!selectedFile || uploading">
+    {{ uploading ? 'Uploading...' : 'Upload' }}
+  </button>
+
+  <div *ngIf="response">
+    <p>Batch ID: {{ response.batchId }}</p>
+    <div *ngIf="!response.isValid">
+      <h4>Missing Lookups</h4>
+      <p *ngIf="response.missingSuppliers.length">
+        Suppliers: {{ response.missingSuppliers.join(', ') }}
+      </p>
+      <p *ngIf="response.missingProcesses.length">
+        Processes: {{ response.missingProcesses.join(', ') }}
+      </p>
+      <small>Fix these in your Excel or in your lookup tables, then re-upload.</small>
+    </div>
+    <div *ngIf="response.isValid">
+      <p class="text-success">{{ response.message || 'Ready to sync.' }}</p>
+    </div>
+  </div>
+
+  <div *ngIf="error" class="text-danger">{{ error }}</div>
+</div>
