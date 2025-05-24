@@ -503,4 +503,111 @@ public class CustomerController : ControllerBase
         return Ok(result);
     }
 }
+'mmmmmmmmmmmmmmmmmmmmm
+
+
+CREATE OR REPLACE FUNCTION sync_customers_from_batch(p_batch_id TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  ins_names   TEXT[];
+  upd_names   TEXT[];
+  del_names   TEXT[];
+  del_count   INT;
+BEGIN
+  -- 1) Upsert staging rows, returning each row’s customer_name & xmax
+  WITH staging AS (
+    SELECT
+      r.customer_name,
+      r.normalized_name,
+      (SELECT id FROM supplier WHERE name = r.supplier_text) AS sup_id,
+      (SELECT id FROM process  WHERE name = r.process_text)  AS proc_id
+    FROM customer_raw_upload r
+    WHERE r.upload_batch_id = p_batch_id
+  ),
+  upserted AS (
+    INSERT INTO customer (
+      customer_name, normalized_name, batch_id,
+      customer_type_id, supplier_id, process_id,
+      is_from_api, is_deleted, updated_at
+    )
+    SELECT
+      s.customer_name,
+      s.normalized_name,
+      p_batch_id,
+      2,         -- Planning
+      s.sup_id,
+      s.proc_id,
+      TRUE,
+      FALSE,
+      NOW()
+    FROM staging s
+    ON CONFLICT (normalized_name, supplier_id)
+    DO UPDATE SET
+      customer_name = EXCLUDED.customer_name,
+      batch_id      = EXCLUDED.batch_id,
+      process_id    = EXCLUDED.process_id,
+      is_from_api   = TRUE,
+      is_deleted    = FALSE,
+      updated_at    = NOW()
+    RETURNING
+      customer_name,
+      xmax
+  )
+  SELECT
+    ARRAY_AGG(customer_name) FILTER (WHERE xmax = 0),
+    ARRAY_AGG(customer_name) FILTER (WHERE xmax <> 0)
+    INTO ins_names, upd_names
+  FROM upserted;
+
+  -- 2) Identify customers to be soft-deleted
+  SELECT ARRAY_AGG(c.customer_name)
+    INTO del_names
+  FROM customer c
+  WHERE c.customer_type_id = 2
+    AND c.is_from_api = TRUE
+    AND NOT EXISTS (
+      SELECT 1 FROM customer_raw_upload r
+      WHERE r.upload_batch_id  = p_batch_id
+        AND r.normalized_name  = c.normalized_name
+        AND (SELECT id FROM supplier WHERE name = r.supplier_text) = c.supplier_id
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM customer_project_map m
+      WHERE m.customer_id = c.customer_id
+        AND m.active = TRUE
+    );
+
+  -- 3) Soft-delete those missing customers
+  UPDATE customer c
+  SET
+    is_deleted = TRUE,
+    deleted_at = NOW(),
+    updated_at = NOW()
+  WHERE c.customer_type_id = 2
+    AND c.is_from_api = TRUE
+    AND NOT EXISTS (
+      SELECT 1 FROM customer_raw_upload r
+      WHERE r.upload_batch_id  = p_batch_id
+        AND r.normalized_name  = c.normalized_name
+        AND (SELECT id FROM supplier WHERE name = r.supplier_text) = c.supplier_id
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM customer_project_map m
+      WHERE m.customer_id = c.customer_id
+        AND m.active = TRUE
+    );
+
+  GET DIAGNOSTICS del_count = ROW_COUNT;
+
+  -- 4) Return JSON summary
+  RETURN JSONB_BUILD_OBJECT(
+    'inserted_count',  COALESCE(array_length(ins_names,1),0),
+    'updated_count',   COALESCE(array_length(upd_names,1),0),
+    'deleted_count',   COALESCE(del_count,0),
+    'inserted_names',  ins_names,
+    'updated_names',   upd_names,
+    'deleted_names',   del_names
+  );
+END;
+$$ LANGUAGE plpgsql;
 
