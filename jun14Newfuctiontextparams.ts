@@ -187,3 +187,29 @@ BEGIN
 
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+8888888888888888
+-- 0) Parse & trim p_process_texts into a clean TEXT[] of names
+v_texts := (
+  SELECT ARRAY_AGG(trim(both FROM part))
+  FROM unnest(
+         string_to_array(
+           replace(p_process_texts, '''', ''),  -- remove quotes
+           ','
+         )
+       ) AS part
+);
+
+RAISE NOTICE 'Parsed & trimmed v_texts[] = %',
+             array_to_string(v_texts, ',');
+
+-- 0b) Resolve to IDs
+SELECT array_agg(id)
+  INTO v_process_ids
+FROM process
+WHERE name = ANY(v_texts);
+
+RAISE NOTICE 'Resolved v_process_ids[] = %',
+             array_to_string(v_process_ids::text[], ',');
