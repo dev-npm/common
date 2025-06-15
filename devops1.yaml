@@ -1,0 +1,222 @@
+---
+# 📁 Folder Structure (in your GitHub repo)
+
+/k8s
+  /qa
+    configmap.yaml
+    deployment.yaml.template
+    service.yaml
+    ingress.yaml
+  /prod
+    configmap.yaml
+    deployment.yaml.template
+    service.yaml
+    ingress.yaml
+
+/.github/workflows
+  deploy.yaml
+
+---
+# ✅ k8s/qa/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: azuread-config
+  namespace: default
+data:
+  AzureAd__TenantId: "qa-tenant-id"
+  AzureAd__ClientId: "qa-client-id"
+
+---
+# ✅ k8s/prod/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: azuread-config
+  namespace: default
+data:
+  AzureAd__TenantId: "prod-tenant-id"
+  AzureAd__ClientId: "prod-client-id"
+
+---
+# ✅ k8s/qa/deployment.yaml.template
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: your-docker-image:__VERSION__
+        envFrom:
+        - configMapRef:
+            name: azuread-config
+
+---
+# ✅ k8s/prod/deployment.yaml.template
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: your-docker-image:__VERSION__
+        envFrom:
+        - configMapRef:
+            name: azuread-config
+
+---
+# ✅ k8s/qa/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-service
+  namespace: default
+spec:
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+
+---
+# ✅ k8s/prod/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-service
+  namespace: default
+spec:
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+
+---
+# ✅ k8s/qa/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: qa.myapp.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-app-service
+                port:
+                  number: 80
+
+---
+# ✅ k8s/prod/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: myapp.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-app-service
+                port:
+                  number: 80
+
+---
+# ✅ .github/workflows/deploy.yaml
+name: Deploy to Kubernetes
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy (qa or prod)'
+        required: true
+        default: 'qa'
+      version:
+        description: 'Docker image version/tag to deploy'
+        required: true
+        default: 'latest'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+
+    - name: Create kubeconfig from secret
+      run: |
+        echo "${{ secrets.KUBECONFIG_B64 }}" | base64 --decode > kubeconfig.yaml
+        export KUBECONFIG=$PWD/kubeconfig.yaml
+      shell: bash
+
+    - name: Apply ConfigMap
+      run: |
+        kubectl apply -f k8s/${{ github.event.inputs.environment }}/configmap.yaml
+
+    - name: Render Deployment with version
+      run: |
+        sed "s/__VERSION__/${{ github.event.inputs.version }}/g" \
+          k8s/${{ github.event.inputs.environment }}/deployment.yaml.template > \
+          k8s/${{ github.event.inputs.environment }}/deployment.yaml
+
+    - name: Apply Deployment
+      run: |
+        kubectl apply -f k8s/${{ github.event.inputs.environment }}/deployment.yaml
+
+    - name: Apply Service
+      run: |
+        kubectl apply -f k8s/${{ github.event.inputs.environment }}/service.yaml
+
+    - name: Apply Ingress
+      run: |
+        kubectl apply -f k8s/${{ github.event.inputs.environment }}/ingress.yaml
+
+    - name: Rollout Restart
+      run: |
+        kubectl rollout restart deployment my-app
