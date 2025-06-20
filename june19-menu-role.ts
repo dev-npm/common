@@ -93,3 +93,50 @@ public class ReportsController : ControllerBase
         return Ok(reports);
     }
 }
+
+
+99999999999
+<nz-menu nzMode="horizontal">
+
+  <!-- DYNAMIC REPORT DROPDOWNS -->
+  <ng-container *ngFor="let type of customerTypes">
+    <li nz-submenu [nzTitle]="type + ' Reports'">
+      <ul>
+        <nz-menu-group nzTitle="Standard">
+          <li nz-menu-item *ngFor="let rpt of reportMenus[type]" 
+              *ngIf="!rpt.is_custom_report"
+              (click)="openReport(rpt)">
+            {{ rpt.report_name }}
+          </li>
+        </nz-menu-group>
+
+        <nz-menu-group nzTitle="Custom">
+          <li nz-menu-item *ngFor="let rpt of reportMenus[type]" 
+              *ngIf="rpt.is_custom_report"
+              (click)="openReport(rpt)">
+            {{ rpt.report_name }}
+          </li>
+        </nz-menu-group>
+      </ul>
+    </li>
+  </ng-container>
+
+  <!-- STATIC: ADMIN SETTINGS -->
+  <li nz-submenu nzTitle="Admin Settings">
+    <ul>
+      <li nz-menu-item routerLink="/user-management">User Management</li>
+      <li nz-menu-item routerLink="/role-permissions">Role Permissions</li>
+    </ul>
+  </li>
+
+  <!-- STATIC: PROJECT SETTINGS -->
+  <li nz-submenu nzTitle="Project Settings">
+    <ul>
+      <li nz-menu-item routerLink="/project-list">Projects</li>
+      <li nz-menu-item routerLink="/project-config">Configuration</li>
+      <li nz-menu-item routerLink="/milestones">Milestones</li>
+    </ul>
+  </li>
+
+</nz-menu>
+
