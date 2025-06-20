@@ -1,3 +1,12 @@
+
+.menu-section-header {
+  font-weight: 600;
+  font-size: 12px;
+  color: #999;
+  padding: 4px 16px;
+  pointer-events: none;
+}
+
 reportMenus: { [customerType: string]: AppReport[] } = {};
 
 ngOnInit(): void {
@@ -5,6 +14,13 @@ ngOnInit(): void {
 
   this.reportService.getReportsByRole(role).subscribe(reports => {
     this.reportMenus = {};
+.menu-section-header {
+  font-weight: 600;
+  font-size: 12px;
+  color: #999;
+  padding: 4px 16px;
+  pointer-events: none;
+}
 
     for (const rpt of reports) {
       const group = rpt.customer_type_name;
