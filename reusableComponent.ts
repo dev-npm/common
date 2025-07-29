@@ -74,3 +74,11 @@ export class ParentComponent {
   }
 }
 
+<button nz-button (click)="openEditor()">Edit</button>
+
+<nz-list [nzDataSource]="savedText.split('\n')" [nzRenderItem]="tpl" nzBordered></nz-list>
+<ng-template #tpl let-line>
+  <div class="ant-list-item">{{ line }}</div>
+</ng-template>
+
+
