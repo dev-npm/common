@@ -54,3 +54,39 @@ const routes: Routes = [
   providers: [MsalService] // Ensure services are provided
 })
 export class AppRoutingModule { }
+
+
+**********88
+export class RoleGuard implements CanActivate, CanActivateChild {
+  constructor(private auth: AuthService, private router: Router) {}
+
+  private checkAccess(path: string): boolean {
+    const userRoles = this.auth.getUserRoles();
+
+    let allowedRoles: string[] = [];
+
+    if (path.startsWith('admin')) {
+      allowedRoles = ['Admin'];
+    } else if (path.startsWith('requests')) {
+      allowedRoles = ['Admin', 'Contributor'];
+    }
+
+    const hasAccess = allowedRoles.some(role => userRoles.includes(role));
+
+    if (!hasAccess) {
+      this.router.navigate(['/unauthorized']);
+      return false;
+    }
+
+    return true;
+  }
+
+  canActivate(route: ActivatedRouteSnapshot): boolean {
+    return this.checkAccess(route.routeConfig?.path ?? '');
+  }
+
+  canActivateChild(childRoute: ActivatedRouteSnapshot): boolean {
+    return this.checkAccess(childRoute.routeConfig?.path ?? '');
+  }
+}
+
