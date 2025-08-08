@@ -1,0 +1,9 @@
+- name: Create/Update SMTP secret
+  run: |
+    kubectl create secret generic smtp-secret \
+      --from-literal=SmptUserName='${{ secrets.SMTP_USERNAME }}' \
+      --from-literal=SmptPassword='${{ secrets.SMTP_PASSWORD }}' \
+      --from-literal=SmptHost='${{ secrets.SMTP_HOST }}' \
+      --from-literal=SmptPort='${{ secrets.SMTP_PORT }}' \
+      --from-literal=SmptFromEmailAddress='${{ secrets.SMTP_FROM_EMAIL }}' \
+      --dry-run=client -o yaml | kubectl apply -n dev -f -
