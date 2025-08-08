@@ -7,3 +7,29 @@
       --from-literal=SmptPort='${{ secrets.SMTP_PORT }}' \
       --from-literal=SmptFromEmailAddress='${{ secrets.SMTP_FROM_EMAIL }}' \
       --dry-run=client -o yaml | kubectl apply -n dev -f -
+env:
+  - name: SmptUserName
+    valueFrom:
+      secretKeyRef:
+        name: smtp-secret
+        key: SmptUserName
+  - name: SmptPassword
+    valueFrom:
+      secretKeyRef:
+        name: smtp-secret
+        key: SmptPassword
+  - name: SmptHost
+    valueFrom:
+      secretKeyRef:
+        name: smtp-secret
+        key: SmptHost
+  - name: SmptPort
+    valueFrom:
+      secretKeyRef:
+        name: smtp-secret
+        key: SmptPort
+  - name: SmptFromEmailAddress
+    valueFrom:
+      secretKeyRef:
+        name: smtp-secret
+        key: SmptFromEmailAddress
