@@ -116,3 +116,62 @@ AS $$
 $$;
 
 
+********************************************yyyyyyyyyyyyyyyyyyyyyy
+
+
+CREATE OR REPLACE FUNCTION get_request_with_history(p_request_id bigint)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT jsonb_build_object(
+           -- Request table columns
+           'requestId',         r.id,
+           'currentStatus',     r.status,
+           'customerId',        r.customer_id,
+           'createdDate',       r.created_at,
+
+           -- Latest history fields (MAX updated_on / changed_at)
+           'latestHistoryId',   lh.id,
+           'latestStatus',      lh.status,
+           'latestChangedBy',   lh.changed_by,
+           'latestChangedDate', lh.changed_at,
+           'latestRemarks',     lh.comment,
+
+           -- Full history array
+           'history',           COALESCE(hist.hist, '[]'::jsonb)
+         )
+  FROM request r
+
+  -- Latest history row
+  LEFT JOIN LATERAL (
+    SELECT h.id, h.status, h.changed_by, h.changed_at, h.comment
+    FROM request_history h
+    WHERE h.request_id = r.id
+      AND h.changed_at = (
+        SELECT MAX(changed_at)
+        FROM request_history
+        WHERE request_id = r.id
+      )
+    ORDER BY h.id DESC -- tie-breaker if same timestamp
+    LIMIT 1
+  ) lh ON TRUE
+
+  -- Full history aggregation
+  LEFT JOIN LATERAL (
+    SELECT jsonb_agg(
+             jsonb_build_object(
+               'historyId',   h.id,
+               'status',      h.status,
+               'changedBy',   h.changed_by,
+               'changedDate', h.changed_at,
+               'remarks',     h.comment
+             )
+             ORDER BY h.changed_at
+           ) AS hist
+    FROM request_history h
+    WHERE h.request_id = r.id
+  ) hist ON TRUE
+
+  WHERE r.id = p_request_id;
+$$;
