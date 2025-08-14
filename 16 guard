@@ -1,6 +1,6 @@
 import { Router } from '@angular/router';
 import { MsalService } from '@azure/msal-angular';
-
+const regex = new RegExp(searchValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 export function authGuard(router: Router, authService: MsalService): CanActivateFn {
   return () => {
     const isAuthenticated = authService.instance.getAllAccounts().length > 0;
