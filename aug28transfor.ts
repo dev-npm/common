@@ -124,4 +124,74 @@ with DAG("speednode_etl_dag", start_date=datetime(2025, 8, 1), schedule_interval
         task_id="extract_speednode",
         python_callable=extract_api
     )
+**************************************8888
+
+
+import psycopg2
+import requests
+
+# Step 1: Fetch API Data
+def fetch_speed_node_data():
+    response = requests.get("https://your.api.com/speednodes")
+    response.raise_for_status()
+    return response.json()
+
+# Step 2: DB Connection
+def get_conn():
+    return psycopg2.connect(
+        dbname="yourdb",
+        user="youruser",
+        password="yourpass",
+        host="localhost",
+        port=5432
+    )
+
+# Step 3: Hierarchical Inserts
+def insert_speed_node_data(data):
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    for node in data:
+        # Insert SpeedNode
+        cursor.execute("""
+            INSERT INTO speed_node (name)
+            VALUES (%s)
+            ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+            RETURNING id
+        """, (node["speed_node_name"],))
+        speed_node_id = cursor.fetchone()[0]
+
+        for tdk in node.get("tdks", []):
+            # Insert TDK
+            cursor.execute("""
+                INSERT INTO tdk (name, speed_node_id)
+                VALUES (%s, %s)
+                RETURNING id
+            """, (tdk["name"], speed_node_id))
+            tdk_id = cursor.fetchone()[0]
+
+            for lib in tdk.get("libraries", []):
+                # Insert Library
+                cursor.execute("""
+                    INSERT INTO library (name, tdk_id)
+                    VALUES (%s, %s)
+                    RETURNING id
+                """, (lib["library_name"], tdk_id))
+                library_id = cursor.fetchone()[0]
+
+                for version in lib.get("versions", []):
+                    # Insert Version with 3 FKs
+                    cursor.execute("""
+                        INSERT INTO library_version (name, speed_node_id, tdk_id, library_id)
+                        VALUES (%s, %s, %s, %s)
+                    """, (
+                        version["version_name"],
+                        speed_node_id,
+                        tdk_id,
+                        library_id
+                    ))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
 
