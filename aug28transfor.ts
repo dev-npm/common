@@ -268,3 +268,67 @@ with DAG(
         startup_timeout_seconds=600,
     )
 
+
+    # 1) profiles.yml as a ConfigMap (dbt reads env vars via env_var())
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dbt-profiles-config
+data:
+  profiles.yml: |
+    my_project:
+      target: prod
+      outputs:
+        prod:
+          type: postgres
+          host: "{{ env_var('DB_HOST') }}"
+          user: "{{ env_var('DB_USER') }}"
+          password: "{{ env_var('DBT_ENV_SECRET_DB_PASSWORD') }}"
+          port: "{{ env_var('DB_PORT', '5432') }}"
+          dbname: "{{ env_var('DB_NAME') }}"
+          schema: "{{ env_var('DB_SCHEMA', 'public') }}"
+          threads: 4
+---
+# 2) DB credentials as a Secret (stringData so you don't need base64 manually)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dbt-secrets
+type: Opaque
+stringData:
+  DB_HOST: "your-db-host"
+  DB_PORT: "5432"
+  DB_NAME: "your-db-name"
+  DB_SCHEMA: "public"
+  DB_USER: "your-db-user"
+  DBT_ENV_SECRET_DB_PASSWORD: "your-db-password"
+---
+# 3) A Job that mounts profiles, injects env, and runs dbt
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dbt-build
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: dbt
+          image: my-dbt:latest   # <-- your image that already contains the dbt project
+          args: ["build"]        # runs: dbt build
+          env:
+            - name: DBT_PROFILES_DIR
+              value: /usr/app/profiles
+          envFrom:
+            - secretRef:
+                name: dbt-secrets
+          volumeMounts:
+            - name: profiles
+              mountPath: /usr/app/profiles
+              readOnly: true
+      volumes:
+        - name: profiles
+          configMap:
+            name: dbt-profiles-config
+
+
