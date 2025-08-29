@@ -195,3 +195,76 @@ def insert_speed_node_data(data):
     cursor.close()
     conn.close()
 
+
+
+from datetime import datetime, timedelta
+from airflow import DAG
+from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import KubernetesPodOperator
+from kubernetes.client import models as k8s
+
+# ---- K8s objects: mount profiles ConfigMap and pull creds from Secret ----
+profiles_volume = k8s.V1Volume(
+    name="profiles",
+    config_map=k8s.V1ConfigMapVolumeSource(name="dbt-profiles-config")
+)
+profiles_mount = k8s.V1VolumeMount(
+    name="profiles",
+    mount_path="/usr/app/profiles",
+    read_only=True
+)
+
+env_vars = [
+    k8s.V1EnvVar(name="DBT_PROFILES_DIR", value="/usr/app/profiles"),
+    k8s.V1EnvVar(name="DB_HOST",
+                 value_from=k8s.V1EnvVarSource(
+                     secret_key_ref=k8s.V1SecretKeySelector(name="dbt-secrets", key="DB_HOST"))),
+    k8s.V1EnvVar(name="DB_PORT",
+                 value_from=k8s.V1EnvVarSource(
+                     secret_key_ref=k8s.V1SecretKeySelector(name="dbt-secrets", key="DB_PORT"))),
+    k8s.V1EnvVar(name="DB_NAME",
+                 value_from=k8s.V1EnvVarSource(
+                     secret_key_ref=k8s.V1SecretKeySelector(name="dbt-secrets", key="DB_NAME"))),
+    k8s.V1EnvVar(name="DB_SCHEMA",
+                 value_from=k8s.V1EnvVarSource(
+                     secret_key_ref=k8s.V1SecretKeySelector(name="dbt-secrets", key="DB_SCHEMA"))),
+    k8s.V1EnvVar(name="DB_USER",
+                 value_from=k8s.V1EnvVarSource(
+                     secret_key_ref=k8s.V1SecretKeySelector(name="dbt-secrets", key="DB_USER"))),
+    # dbt masks DBT_ENV_SECRET_* in logs
+    k8s.V1EnvVar(name="DBT_ENV_SECRET_DB_PASSWORD",
+                 value_from=k8s.V1EnvVarSource(
+                     secret_key_ref=k8s.V1SecretKeySelector(name="dbt-secrets", key="DBT_ENV_SECRET_DB_PASSWORD"))),
+]
+
+default_args = {
+    "owner": "data-eng",
+    "retries": 1,
+    "retry_delay": timedelta(minutes=3),
+}
+
+with DAG(
+    dag_id="dbt_build",
+    start_date=datetime(2025, 1, 1),
+    schedule=None,  # trigger manually for demo; set cron later
+    catchup=False,
+    default_args=default_args,
+    tags=["dbt", "kubernetes"],
+) as dag:
+
+    dbt_build = KubernetesPodOperator(
+        task_id="dbt_build_task",
+        name="dbt-build",
+        namespace="default",                           # <--- change if you use another ns
+        image="harbor.myco.io/data/my-dbt:latest",     # <--- your DBT image
+        cmds=["dbt"],
+        arguments=["build", "--no-use-colors"],        # run dbt build
+        env_vars=env_vars,
+        volumes=[profiles_volume],
+        volume_mounts=[profiles_mount],
+        get_logs=True,
+        is_delete_operator_pod=True,                   # auto-clean pod after success
+        image_pull_policy="IfNotPresent",
+        # service_account_name="airflow",              # set if you use a custom SA/RBAC
+        startup_timeout_seconds=600,
+    )
+
