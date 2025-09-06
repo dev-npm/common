@@ -1,0 +1,36 @@
+CREATE OR REPLACE FUNCTION get_file_measurements_with_legend(filekey UUID)
+RETURNS JSONB
+LANGUAGE SQL
+AS $$
+    SELECT jsonb_build_object(
+        'measurements',
+            COALESCE(
+                (SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'id', m.id,
+                        'indicator_group', m.indicator_group,
+                        'measurement_1', m.measurement_1,
+                        'measurement_2', m.measurement_2,
+                        'measurement_3', m.measurement_3,
+                        'created_at', m.created_at
+                    )
+                )
+                FROM measurement m
+                WHERE m.filekey_id = filekey),
+                '[]'::jsonb
+            ),
+        'legend_indicators',
+            COALESCE(
+                (SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'id', l.id,
+                        'indicator_name', l.indicator_name,
+                        'description', l.description
+                    )
+                )
+                FROM legend_indicator l
+                WHERE l.filekey_id = filekey),
+                '[]'::jsonb
+            )
+    );
+$$;
