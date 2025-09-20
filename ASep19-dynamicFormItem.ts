@@ -169,3 +169,118 @@ public class LabelUrlBatchDto
     public List<LabelUrl> Update { get; set; }
     public List<int> Delete { get; set; }
 }
+
+
+
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+
+@Component({
+  selector: 'app-label-url-array',
+  templateUrl: './label-url-array.component.html'
+})
+export class LabelUrlArrayComponent implements OnInit {
+  parentForm!: FormGroup;
+  deletedIds: number[] = [];
+
+  get labelUrls(): FormArray {
+    return this.parentForm.get('labelUrls') as FormArray;
+  }
+
+  constructor(private fb: FormBuilder, private http: HttpClient) {}
+
+  ngOnInit(): void {
+    this.parentForm = this.fb.group({
+      labelUrls: this.fb.array([])
+    });
+
+    this.loadFormData();
+  }
+
+  loadFormData(): void {
+    const response = [
+      { id: 1, label: 'Google', url: 'https://google.com' },
+      { id: 2, label: 'GitHub', url: 'https://github.com' }
+    ];
+
+    response.forEach(item => {
+      this.labelUrls.push(this.fb.group({
+        id: [item.id],
+        label: [item.label, Validators.required],
+        url: [item.url, [Validators.required, Validators.pattern(/^https?:\/\//)]]
+      }));
+    });
+
+    if (this.labelUrls.length === 0) this.addField();
+  }
+
+  addField(): void {
+    this.labelUrls.push(this.fb.group({
+      id: [null],
+      label: ['', Validators.required],
+      url: ['', [Validators.required, Validators.pattern(/^https?:\/\//)]]
+    }));
+  }
+
+  removeField(index: number): void {
+    const control = this.labelUrls.at(index);
+    const id = control.get('id')?.value;
+    if (id) this.deletedIds.push(id);
+    this.labelUrls.removeAt(index);
+  }
+
+  submitForm(): void {
+    if (this.parentForm.valid) {
+      const allItems = this.labelUrls.value;
+
+      const add = allItems.filter((i: any) => !i.id);
+      const update = allItems.filter((i: any) => i.id);
+
+      const payload = {
+        add,
+        update,
+        delete: this.deletedIds
+      };
+
+      console.log('Payload:', payload);
+
+      this.http.post('/api/labelurl/save', payload).subscribe(res => {
+        console.log('Saved', res);
+      });
+    } else {
+      this.labelUrls.markAllAsTouched();
+    }
+  }
+}
+<form [formGroup]="parentForm" (ngSubmit)="submitForm()">
+  <div formArrayName="labelUrls">
+    <div *ngFor="let group of labelUrls.controls; let i = index" [formGroupName]="i">
+      <nz-form-item>
+        <nz-form-label [nzSpan]="4" nzRequired>Label + URL</nz-form-label>
+        <nz-form-control [nzSpan]="18">
+          <nz-input-group nzCompact>
+            <input nz-input formControlName="label" placeholder="Label" style="width: 30%;" />
+            <input nz-input formControlName="url" placeholder="URL" style="width: 70%;" />
+          </nz-input-group>
+        </nz-form-control>
+        <nz-form-control [nzSpan]="2">
+          <button nz-button nzType="link" (click)="removeField(i)" [disabled]="labelUrls.length === 1">Remove</button>
+        </nz-form-control>
+      </nz-form-item>
+    </div>
+  </div>
+
+  <nz-form-item>
+    <nz-form-control [nzSpan]="24">
+      <button nz-button nzType="dashed" (click)="addField()" style="width: 100%;">Add field</button>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-control [nzSpan]="24">
+      <button nz-button nzType="primary" [disabled]="!parentForm.valid">Submit</button>
+    </nz-form-control>
+  </nz-form-item>
+</form>
+
