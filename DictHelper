@@ -1,0 +1,25 @@
+using System.Text.Json;
+
+public static class DictHelper
+{
+    public static string GetString(this Dictionary<string, object> dict, string key, string defaultValue = "")
+    {
+        if (dict == null || !dict.TryGetValue(key, out var raw) || raw == null)
+            return defaultValue;
+
+        if (raw is JsonElement element)
+        {
+            return element.ValueKind switch
+            {
+                JsonValueKind.String => element.GetString(),
+                JsonValueKind.Number => element.ToString(),  // safe: "23"
+                JsonValueKind.True   => "true",
+                JsonValueKind.False  => "false",
+                JsonValueKind.Null   => defaultValue,
+                _ => element.ToString()
+            };
+        }
+
+        return raw.ToString() ?? defaultValue;
+    }
+}
