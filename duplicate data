@@ -1,0 +1,59 @@
+import { Component } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, AbstractControl } from '@angular/forms';
+
+@Component({
+  selector: 'app-comma-text',
+  templateUrl: './comma-text.component.html',
+})
+export class CommaTextComponent {
+  form: FormGroup;
+
+  constructor(private fb: FormBuilder) {
+    this.form = this.fb.group({
+      entries: ['', [this.duplicateCommaValuesValidator]]
+    });
+  }
+
+  // --- Custom validator to detect duplicates ---
+  duplicateCommaValuesValidator(control: AbstractControl) {
+    if (!control.value) return null;
+
+    const values = control.value
+      .split(',')
+      .map(v => v.trim().toLowerCase())        // normalize case & trim spaces
+      .filter(v => v !== '');                  // remove empty entries
+
+    const duplicates = values.filter(
+      (item, index) => values.indexOf(item) !== index
+    );
+
+    return duplicates.length > 0
+      ? { duplicateValues: duplicates }
+      : null;
+  }
+
+  onSubmit() {
+    if (this.form.valid) {
+      console.log('Submitted:', this.form.value);
+    } else {
+      this.form.markAllAsTouched();
+    }
+  }
+}
+
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  <textarea
+    nz-input
+    rows="3"
+    formControlName="entries"
+    placeholder="Enter comma-separated values">
+  </textarea>
+
+  <div class="error" *ngIf="form.get('entries')?.hasError('duplicateValues')">
+    Duplicate values found:
+    {{ form.get('entries')?.errors?.duplicateValues.join(', ') }}
+  </div>
+
+  <button nz-button nzType="primary" [disabled]="form.invalid">Submit</button>
+</form>
+
