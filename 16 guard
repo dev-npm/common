@@ -1,3 +1,9 @@
+var results = items
+            .Select(s => Regex.Match(s, @"\((.*?)\)").Groups[1].Value.Trim())
+            .ToList();
+
+
+
 var items = new[] { "Priority (ABCSED)", "ority (XYZ)", "ority (Test)" };
 
 var cleanedList = items
