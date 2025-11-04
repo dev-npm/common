@@ -1,3 +1,10 @@
+The new Database Instance Portal is a great improvement — the interface is clean, intuitive, and easy to follow. The overall flow for creating and managing instances is clear and user-friendly.
+
+The addition of wiki page links directly on the site is very helpful and makes it easier to find related documentation without searching separately.
+
+Since this marks a shift from the previous portal, where databases were created directly, there was a slight learning curve in understanding the new instance-based model. A short walkthrough video or comparison guide between the old and new processes — demonstrating how to create an instance, set up databases and users, and connect via tools like pgAdmin or DBeaver — would be very helpful for smoother adoption.
+
+Overall, excellent work on the design and clarity of the new portal. The combination of the helpful wiki links and a potential video walkthrough would make the transition experience even better.
 var results = items
             .Select(s => Regex.Match(s, @"\((.*?)\)").Groups[1].Value.Trim())
             .ToList();
