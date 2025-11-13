@@ -1,3 +1,50 @@
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup } from '@angular/forms';
+
+@Component({
+  selector: 'app-tag-select',
+  templateUrl: './tag-select.component.html',
+})
+export class TagSelectComponent implements OnInit {
+  form!: FormGroup;
+  nzOptions = ['Alpha', 'Beta', 'Gamma']; // optional initial suggestions
+  errorMsg = ''; // show below the field
+
+  constructor(private fb: FormBuilder) {}
+
+  ngOnInit(): void {
+    this.form = this.fb.group({
+      tags: [[]]
+    });
+
+    this.form.get('tags')!.valueChanges.subscribe((tags: string[]) => {
+      if (!tags || tags.length === 0) return;
+
+      const lowerTags = tags.map(t => t.toLowerCase());
+      const hasDuplicate = lowerTags.some(
+        (tag, idx) => lowerTags.indexOf(tag) !== idx
+      );
+
+      if (hasDuplicate) {
+        // Keep only unique values
+        const uniqueTags = tags.filter(
+          (t, i, arr) =>
+            arr.findIndex(x => x.toLowerCase() === t.toLowerCase()) === i
+        );
+
+        // Update control silently (no re-trigger)
+        this.form.patchValue({ tags: uniqueTags }, { emitEvent: false });
+
+        // Set error message
+        this.errorMsg = 'Duplicate tag ignored. Tags must be unique (case-insensitive).';
+      } else {
+        this.errorMsg = '';
+      }
+    });
+  }
+}
+
+
 The new Database Instance Portal is a great improvement — the interface is clean, intuitive, and easy to follow. The overall flow for creating and managing instances is clear and user-friendly.
 
 The addition of wiki page links directly on the site is very helpful and makes it easier to find related documentation without searching separately.
