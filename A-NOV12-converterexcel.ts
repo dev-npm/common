@@ -586,3 +586,97 @@ public class Program
         Console.WriteLine("Import completed.");
     }
 }
+
+
+
+private static void ValidateStaticHeadersOrThrow(
+    List<string> excelDataHeaders, 
+    Dictionary<string, string> sectionKinds,
+    List<ExcelFieldMapping> mappings,
+    Dictionary<string, (int StartCol, int EndCol)> headerMap)
+{
+    // ------------------------------------------
+    // 1) NORMALIZE MAPPINGS FROM DATABASE
+    // ------------------------------------------
+    var expectedNormalized = new HashSet<string>(
+        mappings.Select(m => Normalize(m.ExcelColumnName)),
+        StringComparer.OrdinalIgnoreCase
+    );
+
+    // ------------------------------------------
+    // 2) COLLECT STATIC SECTION COLUMN HEADERS
+    // ------------------------------------------
+    var staticHeadersNormalized = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    foreach (var kv in headerMap)
+    {
+        var sectionName = kv.Key;
+
+        // only validate STATIC sections
+        if (!sectionKinds.TryGetValue(sectionName, out var kind) || kind != "Static")
+            continue;
+
+        var (start, end) = kv.Value;
+
+        // loop through the columns belonging to this STATIC range
+        for (int c = start; c <= end; c++)
+        {
+            if (c - 1 >= excelDataHeaders.Count)
+                continue;
+
+            string rawHeader = excelDataHeaders[c - 1];
+            string normalized = Normalize(rawHeader);
+
+            if (!string.IsNullOrWhiteSpace(normalized))
+                staticHeadersNormalized.Add(normalized);
+        }
+    }
+
+    // ------------------------------------------
+    // 3) COMPARE NORMALIZED HEADERS
+    // ------------------------------------------
+
+    // headers expected (from DB) but not found in Excel
+    var missing = expectedNormalized
+        .Where(e => !staticHeadersNormalized.Contains(e))
+        .ToList();
+
+    // headers in Excel but not in DB mapping
+    var extra = staticHeadersNormalized
+        .Where(a => !expectedNormalized.Contains(a))
+        .ToList();
+
+    // ------------------------------------------
+    // 4) THROW IF ANY MISMATCH
+    // ------------------------------------------
+    if (missing.Count > 0 || extra.Count > 0)
+    {
+        var msg = "Static column header validation failed.\n";
+
+        if (missing.Count > 0)
+            msg += "Missing (from Excel): " + string.Join(", ", missing) + "\n";
+
+        if (extra.Count > 0)
+            msg += "Unexpected (extra in Excel): " + string.Join(", ", extra) + "\n";
+
+        throw new InvalidOperationException(msg);
+    }
+}
+
+
+private static string Normalize(string input)
+{
+    if (string.IsNullOrWhiteSpace(input))
+        return "";
+
+    // Remove ALL whitespace: space, tab, newline, NBSP, etc.
+    var cleaned = new string(
+        input.Where(ch => !char.IsWhiteSpace(ch)).ToArray()
+    );
+
+    // Remove Unicode non-breaking space
+    cleaned = cleaned.Replace(((char)160).ToString(), "");
+
+    return cleaned.Trim().ToUpperInvariant();
+}
+
