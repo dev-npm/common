@@ -154,3 +154,95 @@ const routes: Routes = [
     ]
   }
 ];
+<nz-layout class="main-layout">
+
+  <!-- TOP HEADER -->
+  <nz-header class="header">
+    <div class="left">
+      <button nz-button nzType="text" (click)="toggleMenu()">
+        <span nz-icon nzType="menu"></span>
+      </button>
+      <span class="title">Contract Portal</span>
+    </div>
+  </nz-header>
+
+  <!-- DRAWER -> SLIDE MENU (LIKE ANGULAR.IO) -->
+  <nz-drawer
+    [nzVisible]="isMenuVisible"
+    nzPlacement="left"
+    nzClosable="true"
+    [nzWidth]="260"
+    (nzOnClose)="isMenuVisible = false">
+
+    <!-- MULTI-LEVEL MENU -->
+    <ul nz-menu nzMode="inline">
+      <li nz-submenu nzTitle="Dashboard" nzIcon="dashboard">
+        <ul>
+          <li nz-menu-item routerLink="/contract/home">Home</li>
+          <li nz-menu-item routerLink="/contract/stats">Stats</li>
+        </ul>
+      </li>
+
+      <li nz-submenu nzTitle="Reports" nzIcon="file">
+        <ul>
+          <li nz-menu-item routerLink="/contract/monthly">Monthly</li>
+          <li nz-menu-item routerLink="/contract/yearly">Yearly</li>
+        </ul>
+      </li>
+
+      <li nz-submenu nzTitle="Settings" nzIcon="setting">
+        <ul>
+          <li nz-menu-item routerLink="/contract/profile">Profile</li>
+          <li nz-menu-item routerLink="/contract/access">Access</li>
+        </ul>
+      </li>
+    </ul>
+
+  </nz-drawer>
+
+  <!-- MAIN PAGE -->
+  <nz-content class="content">
+    <router-outlet></router-outlet>
+  </nz-content>
+
+</nz-layout>
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-contract-layout',
+  templateUrl: './contract-layout.component.html',
+  styleUrls: ['./contract-layout.component.scss']
+})
+export class ContractLayoutComponent {
+
+  isMenuVisible = false;
+
+  toggleMenu() {
+    this.isMenuVisible = !this.isMenuVisible;
+  }
+}
+.header {
+  background: #fff;
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding: 0 16px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+
+  .left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+  }
+}
+
+.content {
+  padding: 16px;
+  min-height: calc(100vh - 64px);
+  background: #f5f5f5;
+}
