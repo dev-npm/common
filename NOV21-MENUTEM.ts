@@ -55,3 +55,102 @@ visibleMenuItems: MenuItem[] = [
     roles: ['Admin']
   }
 ];
+
+
+***************************
+  <ul nz-menu nzMode="inline" nzTheme="dark" [nzInlineCollapsed]="isCollapsed">
+  <ng-container *ngFor="let item of menuItems">
+    <li *ngIf="!item.children" nz-menu-item [routerLink]="item.route" nzMatchRouter (click)="handleClick(item)">
+      <span *ngIf="item.icon" nz-icon [nzType]="item.icon"></span>
+      <span>{{ item.label }}</span>
+    </li>
+
+    <li *ngIf="item.children" nz-submenu [nzTitle]="item.label" [nzIcon]="item.icon">
+      <ul>
+        <ng-container *ngFor="let child of item.children">
+          <li *ngIf="!child.children" nz-menu-item [routerLink]="child.route" nzMatchRouter (click)="handleClick(child)">
+            {{ child.label }}
+          </li>
+
+          <li *ngIf="child.children" nz-submenu [nzTitle]="child.label">
+            <ul>
+              <li *ngFor="let grand of child.children"
+                  nz-menu-item
+                  [routerLink]="grand.route"
+                  nzMatchRouter
+                  (click)="handleClick(grand)">
+                {{ grand.label }}
+              </li>
+            </ul>
+          </li>
+        </ng-container>
+      </ul>
+    </li>
+  </ng-container>
+</ul>
+// component.ts
+menuItems: MenuItem[] = [
+  {
+    label: 'Home',
+    icon: 'home',
+    route: ['/contract']
+  },
+  {
+    label: 'Requests',
+    icon: 'file-text',
+    children: [
+      {
+        label: 'New Request',
+        route: ['/contract', 'requests', 'new']
+      },
+      {
+        label: 'Request List',
+        route: ['/contract', 'requests', 'list']
+      },
+      {
+        label: 'Reports',
+        children: [
+          {
+            label: 'Summary',
+            route: ['/contract', 'requests', 'reports', 'summary']
+          },
+          {
+            label: 'Detail',
+            modalAction: 'openDetailReportModal' // instead of route
+          }
+        ]
+      }
+    ]
+  },
+  {
+    label: 'Templates',
+    icon: 'profile',
+    children: [
+      {
+        label: 'Master',
+        route: ['/contract', 'templates', 'master']
+      },
+      {
+        label: 'Customer',
+        modalAction: 'openCustomerTemplateModal'
+      }
+    ]
+  }
+];
+
+
+handleClick(item: MenuItem): void {
+  if (item.modalAction) {
+    switch (item.modalAction) {
+      case 'openDetailReportModal':
+        this.modal.create({ nzContent: DetailReportModalComponent });
+        break;
+      case 'openCustomerTemplateModal':
+        this.modal.create({ nzContent: CustomerTemplateModalComponent });
+        break;
+      default:
+        console.warn('Unknown modal action:', item.modalAction);
+    }
+  }
+}
+
