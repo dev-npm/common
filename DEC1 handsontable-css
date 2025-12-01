@@ -1,0 +1,60 @@
+.container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+p {
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.grid-wrapper {
+  margin-top: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border-radius: 4px;
+  overflow: auto;
+  max-height: 1000px;
+}
+
+.grid-wrapper .handsontable {
+  height: auto !important;
+}
+
+.legend-wrapper {
+  margin-top: 20px;
+  width: 300px;
+}
+
+.legend-wrapper .handsontable {
+  border: 2px solid #d0d0d0;
+}
+
+.legend-wrapper .handsontable thead th {
+  background: linear-gradient(to bottom, #ED7D31 0%, #C65911 100%);
+  color: white;
+  font-weight: bold;
+  text-align: left;
+  padding-left: 10px;
+}
+
+.legend-wrapper .handsontable td {
+  font-weight: 600;
+  border: 1px solid #d0d0d0;
+}
+
+.legend-wrapper .handsontable td:first-child {
+  text-align: center;
+  font-weight: bold;
+  background-color: #fff4cc;
+}
+
+.legend-wrapper .handsontable td:last-child {
+  background-color: white;
+  padding-left: 10px;
+}
