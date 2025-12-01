@@ -1,3 +1,107 @@
+
+.handsontable thead th {
+  background: linear-gradient(to bottom, #f0f0f0 0%, #e0e0e0 100%);
+  border: 1px solid #d0d0d0;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+}
+
+/* Nested header styling - top level */
+.handsontable .ht_clone_top thead th:first-child {
+  background: linear-gradient(to bottom, #4472C4 0%, #2E5396 100%);
+  color: white;
+  font-weight: bold;
+}
+
+/* Row header styling */
+.handsontable .ht__rowHeader {
+  background: linear-gradient(to right, #f0f0f0 0%, #e0e0e0 100%);
+  border: 1px solid #d0d0d0;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Cell styling */
+.handsontable td {
+  border: 1px solid #d0d0d0;
+  background-color: white;
+}
+
+/* Alternating row colors like Excel */
+.handsontable tbody tr:nth-child(even) td {
+  background-color: #f9f9f9;
+}
+
+.handsontable tbody tr:nth-child(odd) td {
+  background-color: white;
+}
+
+/* Selected cell styling */
+.handsontable td.current,
+.handsontable th.current {
+  background-color: #d4e7ff;
+}
+
+/* Selected area styling */
+.handsontable td.area {
+  background-color: #e8f1ff;
+}
+
+/* Hover effect */
+.handsontable tbody tr:hover td {
+  background-color: #fff4cc !important;
+}
+
+/* Column header colors for different sections */
+.handsontable thead th:nth-child(1),
+.handsontable thead th:nth-child(2),
+.handsontable thead th:nth-child(3),
+.handsontable thead th:nth-child(4),
+.handsontable thead th:nth-child(5),
+.handsontable thead th:nth-child(6),
+.handsontable thead th:nth-child(7) {
+  background: linear-gradient(to bottom, #70AD47 0%, #507E32 100%);
+  color: white;
+}
+
+.handsontable thead th:nth-child(8),
+.handsontable thead th:nth-child(9),
+.handsontable thead th:nth-child(10),
+.handsontable thead th:nth-child(11),
+.handsontable thead th:nth-child(12),
+.handsontable thead th:nth-child(13),
+.handsontable thead th:nth-child(14) {
+  background: linear-gradient(to bottom, #4472C4 0%, #2E5396 100%);
+  color: white;
+}
+
+.handsontable thead th:nth-child(15),
+.handsontable thead th:nth-child(16),
+.handsontable thead th:nth-child(17),
+.handsontable thead th:nth-child(18),
+.handsontable thead th:nth-child(19),
+.handsontable thead th:nth-child(20),
+.handsontable thead th:nth-child(21) {
+  background: linear-gradient(to bottom, #ED7D31 0%, #C65911 100%);
+  color: white;
+}
+
+/* Grid lines */
+.handsontable {
+  border: 1px solid #d0d0d0;
+}
+
+/* Focus styling */
+.handsontable td.current:focus {
+  outline: 2px solid #4472C4;
+  outline-offset: -1px;
+}
+
+
+
+***********
+
 .container {
   max-width: 1600px;
   margin: 0 auto;
