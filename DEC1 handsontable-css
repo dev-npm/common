@@ -1,4 +1,107 @@
 
+
+buildNestedHeaders(columnMap: ColumnMap[]) {
+  const row1: any[] = [];
+  const row2: any[] = [];
+
+  // For each column index, store which group index it belongs to.
+  // -1 = tail / no group
+  const groupIndexPerColumn: number[] = [];
+
+  let currentGroup = "";
+  let spanCount = 0;
+
+  // index of the current group for non-empty header1
+  let currentGroupIndex = -1;
+
+  // counter that increases for each NEW non-empty group
+  let nextGroupIndex = 0;
+
+  const flush = () => {
+    if (spanCount === 0) return;
+
+    if (!currentGroup) {
+      // Tail static case (no group label)
+      row1.push({
+        label: "",
+        colspan: spanCount,
+        headerClassName: "section-tail"
+      });
+    } else {
+      row1.push({
+        label: currentGroup,
+        colspan: spanCount,
+        headerClassName: `section-header-${currentGroupIndex}`
+      });
+    }
+
+    spanCount = 0;
+  };
+
+  columnMap.forEach((col, index) => {
+    const label = col.header1 || "";
+
+    if (index === 0) {
+      // Starting first group
+      currentGroup = label;
+      spanCount = 1;
+
+      if (label) {
+        currentGroupIndex = nextGroupIndex++;
+      } else {
+        currentGroupIndex = -1; // tail
+      }
+    } else if (label === currentGroup) {
+      // Still the same group
+      spanCount++;
+    } else {
+      // Group changed → flush the previous one
+      flush();
+
+      // Start new group
+      currentGroup = label;
+      spanCount = 1;
+
+      if (label) {
+        currentGroupIndex = nextGroupIndex++;
+      } else {
+        currentGroupIndex = -1;
+      }
+    }
+
+    // Remember which group this column belongs to
+    groupIndexPerColumn[index] = currentGroup ? currentGroupIndex : -1;
+
+    // Last column → flush final group
+    if (index === columnMap.length - 1) {
+      flush();
+    }
+  });
+
+  // Build row2 (subheaders) with matching headerClassName
+  columnMap.forEach((col, index) => {
+    const groupIndex = groupIndexPerColumn[index];
+
+    if (groupIndex === -1) {
+      // Tail static column
+      row2.push({
+        label: col.header2,
+        headerClassName: "section-tail"
+      });
+    } else {
+      // Belongs to one of the dynamic groups
+      row2.push({
+        label: col.header2,
+        headerClassName: `section-header-${groupIndex}`
+      });
+    }
+  });
+
+  return [row1, row2];
+}
+
+
+*************
 .handsontable thead th {
   background: linear-gradient(to bottom, #f0f0f0 0%, #e0e0e0 100%);
   border: 1px solid #d0d0d0;
