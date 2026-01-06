@@ -1,42 +1,28 @@
-private static void FlattenItemsInPlace(JObject root)
+public static Dictionary<string, object> FlattenObject(object item, Dictionary<string, object> dynamicValues)
 {
-    // Get Items array
-    if (root["Items"] is not JArray items)
-        return;
+    var result = new Dictionary<string, object>();
 
-    var flattenedItems = new JArray();
-
-    foreach (JObject item in items)
+    // A. AUTOMATICALLY copy all Static Properties (ItemData, Priority, etc.)
+    // We use Reflection to scan the object so you don't have to type them manually.
+    foreach (var prop in item.GetType().GetProperties())
     {
-        var flat = new JObject();
+        // Skip the dictionary property itself to avoid infinite recursion
+        if (prop.Name == "DynamicAttributes") continue;
 
-        // Copy all non-dynamic properties
-        foreach (var prop in item.Properties())
-        {
-            if (prop.Name != "DynamicProperties")
-            {
-                flat[prop.Name] = prop.Value;
-            }
-        }
-
-        // Merge DynamicProperties into root of item
-        if (item["DynamicProperties"] is JObject dyn)
-        {
-            foreach (var dp in dyn.Properties())
-            {
-                // Prevent overwrite of known fields
-                if (flat[dp.Name] == null)
-                {
-                    flat[dp.Name] = dp.Value;
-                }
-            }
-        }
-
-        flattenedItems.Add(flat);
+        var value = prop.GetValue(item);
+        
+        // Add to result (using camelCase for the key if you prefer)
+        result[prop.Name] = value; 
     }
 
-    // Replace Items only
-    root["Items"] = flattenedItems;
+    // B. Merge the Dynamic Values
+    if (dynamicValues != null)
+    {
+        foreach (var kvp in dynamicValues)
+        {
+            result[kvp.Key] = kvp.Value;
+        }
+    }
 
-    // ❗ LegendItems remains untouched in root
+    return result;
 }
