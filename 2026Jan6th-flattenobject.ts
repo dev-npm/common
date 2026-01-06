@@ -1,28 +1,77 @@
-public static Dictionary<string, object> FlattenObject(object item, Dictionary<string, object> dynamicValues)
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Linq;
+
+public class Program
 {
-    var result = new Dictionary<string, object>();
-
-    // A. AUTOMATICALLY copy all Static Properties (ItemData, Priority, etc.)
-    // We use Reflection to scan the object so you don't have to type them manually.
-    foreach (var prop in item.GetType().GetProperties())
+    public static void Main()
     {
-        // Skip the dictionary property itself to avoid infinite recursion
-        if (prop.Name == "DynamicAttributes") continue;
+        string jsonInput = @"{
+          ""Items"": [
+            { ""Id"": ""1"", ""Name"": ""Item A"", ""Color"": ""Red"", ""Size"": ""Large"" },
+            { ""Id"": ""2"", ""Name"": ""Item B"", ""Weight"": 3.4, ""Color"": ""Blue"" }
+          ],
+          ""LegendItems"": [
+            { ""Key"": ""Color"", ""Description"": ""The color of the item"" }
+          ]
+        }";
 
-        var value = prop.GetValue(item);
-        
-        // Add to result (using camelCase for the key if you prefer)
-        result[prop.Name] = value; 
-    }
+        // Parse
+        JsonNode root = JsonNode.Parse(jsonInput)!;
 
-    // B. Merge the Dynamic Values
-    if (dynamicValues != null)
-    {
-        foreach (var kvp in dynamicValues)
+        // Flatten Items to List<Dictionary<string, object>>
+        var flatItems = new List<Dictionary<string, object>>();
+
+        foreach (var item in root["Items"].AsArray())
         {
-            result[kvp.Key] = kvp.Value;
+            var dict = new Dictionary<string, object>();
+
+            foreach (var prop in item.AsObject())
+            {
+                dict[prop.Key] = ExtractValue(prop.Value);
+            }
+
+            flatItems.Add(dict);
         }
+
+        // Deserialize LegendItems
+        var legendItems = root["LegendItems"].Deserialize<List<LegendItemDto>>() ?? new();
+
+        // Compose final output
+        var output = new
+        {
+            Items = flatItems,
+            LegendItems = legendItems
+        };
+
+        // Serialize result
+        var finalJson = JsonSerializer.Serialize(output, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        Console.WriteLine(finalJson);
     }
 
-    return result;
+    // Legend DTO
+    public class LegendItemDto
+    {
+        public string Key { get; set; }
+        public string Description { get; set; }
+    }
+
+    // Simple value extractor
+    private static object? ExtractValue(JsonNode? node)
+    {
+        return node?.GetValueKind() switch
+        {
+            JsonValueKind.Number => node.GetValue<double>(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String => node.GetValue<string>(),
+            _ => node?.ToString()
+        };
+    }
 }
