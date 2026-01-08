@@ -1,3 +1,24 @@
+function extractDynamicKeys<T extends object>(
+  item: T,
+  knownKeys: readonly (keyof T)[]
+): (keyof T)[] {
+  const dynamicKeys: (keyof T)[] = [];
+
+  for (const key in item) {
+    if (
+      Object.prototype.hasOwnProperty.call(item, key) &&
+      !knownKeys.includes(key as keyof T)
+    ) {
+      if (item[key] === 'X') {
+        dynamicKeys.push(key as keyof T);
+      }
+    }
+  }
+
+  return dynamicKeys;
+}
+
+
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
