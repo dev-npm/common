@@ -216,3 +216,54 @@ private finalizeAndClose(): void {
   this.modalRef.close(result);
 }
 
+
+***************** 
+  <nz-tabset (nzSelectedIndexChange)="onRecipientTabChange(section, $event)">
+  <nz-tab *ngFor="let tab of section.tabs">
+    
+    <!-- Custom tab title -->
+    <ng-template nz-tab-title>
+      <span class="tab-title">
+        {{ tab.recipientName }}
+
+        <!-- Icon shown ONLY if tab is NOT visited -->
+        <span
+          *ngIf="!tab.loaded"
+          nz-tooltip
+          nzTooltipTitle="Not reviewed">
+          <i nz-icon nzType="info-circle" nzTheme="outline" class="tab-warning-icon"></i>
+        </span>
+      </span>
+    </ng-template>
+
+    <!-- Tab content -->
+    <ng-container *ngIf="tab.loaded; else loadingTpl">
+      <app-child-item-filter-list
+        [allItems]="tab.allItems"
+        [isEditMode]="isEditMode"
+        (removedIdsChange)="handleRemovedIds(tab, $event.pvtIds, $event.action)">
+      </app-child-item-filter-list>
+    </ng-container>
+
+  </nz-tab>
+</nz-tabset>
+<button
+  nz-button
+  nzType="primary"
+  [disabled]="!canSave"
+  nz-tooltip
+  nzTooltipTitle="Please visit all tabs before saving">
+  Save
+</button>
+.tab-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-warning-icon {
+  color: #faad14; /* Ant Design warning color */
+  font-size: 12px;
+}
+
+
