@@ -117,3 +117,102 @@ export class FileModalComponent implements OnInit {
   },
   nzFooter: null
 });
+
+***************jan26*********
+
+  private getAllTabs(): RecipientTabVm[] {
+  return this.sections.flatMap(s => s.tabs);
+}
+private loadTabForAddMode(tab: RecipientTabVm): Observable<void> {
+  // If already loaded, do nothing
+  if (tab.loaded) {
+    return of(void 0);
+  }
+
+  tab.loading = true;
+
+  return this.svc.getAvailableItems(tab.gbtFileId).pipe(
+    tap(available => {
+      // Add mode uses persisted state if exists,
+      // otherwise defaults to all selected
+      const persisted = this.persistedLookup.get(tab.key);
+
+      tab.allItems = this.buildAddModeItems(available, persisted);
+
+      tab.loaded = true;
+      tab.loading = false;
+    }),
+    map(() => void 0),
+    catchError(err => {
+      tab.loading = false;
+      throw err;
+    })
+  );
+}
+
+
+save(): void {
+  if (this.isEditMode) {
+    // Edit mode: existing behavior
+    this.finalizeAndClose();
+    return;
+  }
+
+  // ------------------------------------------------------------
+  // ADD MODE POLICY:
+  // Auto-load ALL tabs before saving so that
+  // "all selected by default" applies to every tab,
+  // even if user never visited it.
+  // ------------------------------------------------------------
+
+  const tabs = this.getAllTabs();
+
+  const loadOperations = tabs.map(tab =>
+    this.loadTabForAddMode(tab)
+  );
+
+  // Wait until ALL tabs are loaded
+  forkJoin(loadOperations).subscribe({
+    next: () => {
+      // Now every tab has allItems populated
+      this.finalizeAndClose();
+    },
+    error: () => {
+      // handle error UI if needed
+    }
+  });
+}
+
+
+private finalizeAndClose(): void {
+  const result: PersistedTabState[] = [];
+
+  for (const section of this.sections) {
+    for (const tab of section.tabs) {
+
+      // By now, tab.loaded === true for all tabs in Add mode
+      const selectedItems = tab.allItems
+        .filter(i => i.selected === true)
+        .map(i => ({
+          gvtId: i.gvtId, // null in add mode
+          itemData: i.itemData,
+          itemDataIndicator: i.itemDataIndicator,
+          priority: i.priority
+        }));
+
+      result.push({
+        categoryId: tab.categoryId,
+        recipientId: tab.recipientId,
+        gbtFileId: tab.gbtFileId,
+
+        selectedItems,
+
+        // In Add mode this will be empty; in Edit mode it is meaningful
+        removedgvtIds: Array.from(tab.removedgvtIds)
+      });
+    }
+  }
+
+  this.modalRef.close(result);
+}
+
