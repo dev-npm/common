@@ -1,12 +1,42 @@
 <div class="entitlement-container">
-  <nz-card nzTitle="Entitlement Required" class="entitlement-card">
-    
-    <p>You are not authorized to view this page.</p>
+  <nz-card class="entitlement-card">
+
+    <h2>
+      <span nz-icon nzType="lock" nzTheme="outline"></span>
+      Entitlement Required
+    </h2>
+
+    <p class="subtitle">
+      You are not authorized to view this page.
+    </p>
 
     <nz-divider></nz-divider>
 
-    <h4>Request Access</h4>
-    <p>Apply to the appropriate entitlement(s).</p>
+    <div class="step-item">
+      <span nz-icon nzType="user-add" nzTheme="outline"></span>
+      <div>
+        <strong>Request Access</strong>
+        <p>Apply to the appropriate entitlement(s).</p>
+      </div>
+    </div>
+
+    <div class="step-item">
+      <span nz-icon nzType="clock-circle" nzTheme="outline"></span>
+      <div>
+        <strong>Wait for Approval</strong>
+        <p>You will receive an email notification once approved.</p>
+      </div>
+    </div>
+
+    <div class="step-item">
+      <span nz-icon nzType="check-circle" nzTheme="outline"></span>
+      <div>
+        <strong>Access the Site</strong>
+        <p>Return to this page after approval.</p>
+      </div>
+    </div>
+
+    <nz-divider></nz-divider>
 
     <a
       nz-button
@@ -22,13 +52,24 @@
 
   </nz-card>
 </div>
-.entitlement-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 80px;
-}
 
-.entitlement-card {
-  width: 500px;
-  text-align: center;
+.entitlement-container{
+  display:flex;
+  justify-content:center;
+  margin-top:80px;
+}
+.entitlement-card{
+  width:520px;
+}
+.subtitle{
+  color:rgba(0,0,0,0.45);
+}
+.step-item{
+  display:flex;
+  gap:12px;
+  margin-bottom:16px;
+}
+.step-item span[nz-icon]{
+  font-size:20px;
+  margin-top:4px;
 }
