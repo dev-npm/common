@@ -159,3 +159,18 @@ class Airplane implements Flyable {
         System.out.println("Airplane is flying");
     }
 }
+
+
+class MySQLDatabase {
+    void save() {
+        System.out.println("Saved to MySQL");
+    }
+}
+
+class OrderService {
+    private MySQLDatabase db = new MySQLDatabase();
+
+    void placeOrder() {
+        db.save();
+    }
+}
