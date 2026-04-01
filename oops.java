@@ -174,3 +174,58 @@ class OrderService {
         db.save();
     }
 }
+
+
+
+const employees = [
+  { name: "Alice", department: "HR" },
+  { name: "Bob", department: "IT" },
+  { name: "Charlie", department: "HR" },
+  { name: "David", department: "IT" },
+  { name: "Eva", department: "Finance" }
+];
+
+Group employees by department.
+
+const grouped = employees.reduce((acc, employee) => {
+  const dept = employee.department;
+
+  if (!acc[dept]) {
+    acc[dept] = [];
+  }
+
+  acc[dept].push(employee);
+  return acc;
+}, {} as Record<string, { name: string; department: string }[]>);
+
+console.log(grouped);
+
+
+    abstract class Payment {
+    abstract void pay(double amount);
+}
+
+class CreditCardPayment extends Payment {
+    void pay(double amount) {
+        System.out.println("Paid by credit card: " + amount);
+    }
+}
+
+class UpiPayment extends Payment {
+    void pay(double amount) {
+        System.out.println("Paid by UPI: " + amount);
+    }
+}
+
+
+const original = {
+  name: "Saif",
+  address: {
+    city: "San Jose"
+  }
+};
+
+const copy = { ...original };
+copy.address.city = "Milpitas";
+
+console.log(original.address.city); // "Milpitas"
