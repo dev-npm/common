@@ -1,0 +1,23 @@
+[project]
+name = "mini-adk-fastapi-mcp"
+version = "0.2.0"
+description = "A small ADK-like FastAPI agent runtime with dynamic prompts, skills, permissions, and MCP tools."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.30,<1",
+    "pydantic>=2.8,<3",
+    "pydantic-settings>=2.4,<3",
+    "mcp>=1.27,<2",
+    "openai>=1.93,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+    "httpx>=0.27,<1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
