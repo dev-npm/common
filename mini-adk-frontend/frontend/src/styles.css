@@ -1,0 +1,13 @@
+@import "ng-zorro-antd/ng-zorro-antd.min.css";
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f5f7fb;
+}
+
+* {
+  box-sizing: border-box;
+}

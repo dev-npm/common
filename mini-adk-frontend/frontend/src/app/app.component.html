@@ -1,0 +1,102 @@
+<nz-layout class="page-layout">
+  <nz-content class="page-content">
+    <div class="page-shell">
+      <nz-card nzTitle="Mini ADK Chat Assistant" [nzBordered]="false" class="main-card">
+        <div class="subheading">
+          Angular + ng-zorro frontend talking to the FastAPI backend.
+        </div>
+
+        <div nz-row [nzGutter]="16" class="toolbar-row">
+          <div nz-col [nzXs]="24" [nzMd]="12">
+            <label class="field-label">Agent</label>
+            <nz-select
+              nzShowSearch
+              nzPlaceHolder="Select an agent"
+              [(ngModel)]="selectedAgentName"
+              [nzLoading]="isAgentsLoading"
+              class="full-width"
+            >
+              <nz-option
+                *ngFor="let agent of agents"
+                [nzLabel]="agent.display_name"
+                [nzValue]="agent.name"
+              ></nz-option>
+            </nz-select>
+          </div>
+
+          <div nz-col [nzXs]="24" [nzMd]="12">
+            <label class="field-label">Roles</label>
+            <input
+              nz-input
+              [(ngModel)]="roles"
+              placeholder="Viewer,Admin"
+            />
+          </div>
+        </div>
+
+        <nz-card *ngIf="selectedAgent" nzSize="small" class="agent-info-card">
+          <div class="agent-info-title">
+            {{ selectedAgent.display_name }}
+            <nz-tag nzColor="blue">{{ selectedAgent.name }}</nz-tag>
+          </div>
+          <div class="agent-info-description">
+            {{ selectedAgent.description }}
+          </div>
+        </nz-card>
+
+        <nz-alert
+          *ngIf="errorText"
+          nzType="error"
+          [nzMessage]="errorText"
+          nzShowIcon
+          class="error-alert"
+        ></nz-alert>
+
+        <div class="messages-panel">
+          <div
+            *ngFor="let message of messages"
+            class="message-row"
+            [class.user-row]="message.sender === 'user'"
+          >
+            <div class="message-bubble" [class.user-bubble]="message.sender === 'user'">
+              <div class="message-role">
+                {{ message.sender === 'user' ? 'You' : 'Assistant' }}
+              </div>
+              <div class="message-text">{{ message.text }}</div>
+            </div>
+          </div>
+
+          <div *ngIf="isSending" class="typing-row">
+            <nz-spin nzSimple></nz-spin>
+            <span>Assistant is working...</span>
+          </div>
+        </div>
+
+        <div class="composer-section">
+          <label class="field-label">Message</label>
+          <textarea
+            nz-input
+            rows="4"
+            [(ngModel)]="messageText"
+            (keydown)="onComposerKeyDown($event)"
+            placeholder="Type your question here. Press Enter to send, Shift+Enter for a new line."
+          ></textarea>
+
+          <div class="composer-actions">
+            <button nz-button nzType="default" (click)="loadAgents()" [disabled]="isAgentsLoading">
+              Refresh agents
+            </button>
+            <button
+              nz-button
+              nzType="primary"
+              (click)="sendMessage()"
+              [disabled]="isSending || !selectedAgentName || !messageText.trim()"
+            >
+              {{ isSending ? 'Sending...' : 'Send' }}
+            </button>
+          </div>
+        </div>
+      </nz-card>
+    </div>
+  </nz-content>
+</nz-layout>
