@@ -23,3 +23,48 @@ public static class DictHelper
         return raw.ToString() ?? defaultValue;
     }
 }
+
+private object NormalizeValue(
+    ActiveColumnConfig col,
+    object? value)
+{
+    // Plain text column
+    if (col.DataType == "text")
+    {
+        return value?.ToString() ?? string.Empty;
+    }
+
+    // Multi-select column
+    if (col.DataType == "multi_select")
+    {
+        // already parsed list
+        if (value is List<string> list)
+        {
+            return list;
+        }
+
+        // if DB/json deserializer gave string[]
+        if (value is string[] array)
+        {
+            return array.ToList();
+        }
+
+        // if stored as JSON text in dictionary
+        if (value is string json && !string.IsNullOrWhiteSpace(json))
+        {
+            try
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<List<string>>(json)
+                       ?? new List<string>();
+            }
+            catch
+            {
+                return new List<string>();
+            }
+        }
+
+        return new List<string>();
+    }
+
+    return value ?? string.Empty;
+}
