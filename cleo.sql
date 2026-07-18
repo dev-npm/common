@@ -1,3 +1,99 @@
+new***************
+
+
+
+SELECT
+    f.fqn_number,
+
+    rr.release_name,
+    rr.release_date,
+
+    sn.speed_node_name,
+    tdk.tdk_name,
+    l.library_name,
+    lv.library_version_name,
+
+    COALESCE(
+        slices.slice_names,
+        ARRAY[]::TEXT[]
+    ) AS slice_names
+
+FROM release_fqn rf
+
+JOIN fqn f
+    ON f.fqn_id = rf.fqn_id
+
+JOIN request_release rr
+    ON rr.request_release_id = rf.request_release_id
+
+JOIN request r
+    ON r.request_id = rr.request_id
+
+JOIN library_release_key lrk
+    ON lrk.library_release_key_id = r.library_release_key_id
+
+JOIN speed_node sn
+    ON sn.speed_node_id = lrk.speed_node_id
+
+JOIN tech_design_kit tdk
+    ON tdk.tdk_id = lrk.tdk_id
+
+JOIN library l
+    ON l.library_id = lrk.library_id
+
+JOIN library_version lv
+    ON lv.library_version_id = lrk.library_version_id
+
+/*
+    Build one distinct slice-name array for the current release-FQN.
+*/
+LEFT JOIN LATERAL
+(
+    SELECT
+        ARRAY_AGG(
+            DISTINCT x.slice_name
+            ORDER BY x.slice_name
+        ) AS slice_names
+    FROM
+    (
+        /*
+            Predefined slices associated with this release-FQN.
+        */
+        SELECT
+            TRIM(s.slice_name) AS slice_name
+
+        FROM release_fqn_slice rfs
+
+        JOIN slice s
+            ON s.slice_id = rfs.slice_id
+
+        WHERE rfs.release_fqn_id = rf.release_fqn_id
+          AND NULLIF(TRIM(s.slice_name), '') IS NOT NULL
+
+        UNION
+
+        /*
+            Custom slice stored on the request.
+        */
+        SELECT
+            TRIM(r.custom_slice_name) AS slice_name
+
+        WHERE NULLIF(TRIM(r.custom_slice_name), '') IS NOT NULL
+    ) x
+) slices
+    ON TRUE
+
+WHERE r.request_id = :request_id
+  AND rr.request_release_id = :release_id
+
+ORDER BY
+    f.fqn_number;
+
+
+
+    new************
+
+************************************
 WITH all_fqn_slices AS
 (
     /*
