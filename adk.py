@@ -475,3 +475,107 @@ async def get_me(
             user.scopes
         ),
     }
+**************************************
+
+import logging
+
+from azure.core.exceptions import AzureError
+from azure.identity import CredentialUnavailableError
+from azure.identity.aio import OnBehalfOfCredential
+
+from app.security.models import (
+    AuthenticatedUser,
+    DownstreamAccessToken,
+)
+
+
+logger = logging.getLogger(__name__)
+
+
+class OboTokenExchangeError(Exception):
+    """
+    Raised when FastAPI cannot exchange the incoming
+    user access token for a downstream access token.
+    """
+
+    pass
+
+
+class OboTokenService:
+    """
+    Exchanges the validated Token A received by FastAPI
+    for Token B using the Microsoft Entra OBO flow.
+
+    This service contains only shared/static configuration.
+
+    It NEVER stores a user's access token on self.
+    """
+
+    def __init__(
+        self,
+        tenant_id: str,
+        client_id: str,
+        client_secret: str,
+        downstream_scope: str,
+    ):
+        self._tenant_id = tenant_id
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._downstream_scope = downstream_scope
+
+    async def get_downstream_token(
+        self,
+        user: AuthenticatedUser,
+    ) -> DownstreamAccessToken:
+
+        credential = OnBehalfOfCredential(
+            tenant_id=self._tenant_id,
+            client_id=self._client_id,
+            client_secret=self._client_secret,
+
+            # Token A
+            user_assertion=user.access_token,
+        )
+
+        try:
+
+            logger.info(
+                "OBO token exchange started "
+                "user_id=%s",
+                user.user_id,
+            )
+
+            access_token = await credential.get_token(
+                self._downstream_scope
+            )
+
+            logger.info(
+                "OBO token exchange completed "
+                "user_id=%s expires_on=%s",
+                user.user_id,
+                access_token.expires_on,
+            )
+
+            return DownstreamAccessToken(
+                value=access_token.token,
+                expires_on=access_token.expires_on,
+            )
+
+        except (
+            AzureError,
+            CredentialUnavailableError,
+        ) as exception:
+
+            logger.exception(
+                "OBO token exchange failed "
+                "user_id=%s",
+                user.user_id,
+            )
+
+            raise OboTokenExchangeError(
+                "Unable to acquire downstream access token."
+            ) from exception
+
+        finally:
+
+            await credential.close()
