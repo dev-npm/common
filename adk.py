@@ -579,3 +579,66 @@ class OboTokenService:
         finally:
 
             await credential.close()
+**************************'
+from typing import Annotated
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    status,
+)
+
+from app.dependencies.security import (
+    get_current_user,
+)
+from app.security.models import (
+    AuthenticatedUser,
+)
+from app.security.obo_token_service import (
+    OboTokenExchangeError,
+)
+
+
+router = APIRouter(
+    prefix="/debug/auth",
+    tags=["Authentication Debug"],
+)
+
+
+@router.get("/obo")
+async def test_obo(
+    request: Request,
+
+    user: Annotated[
+        AuthenticatedUser,
+        Depends(get_current_user),
+    ],
+):
+
+    runtime = request.app.state.runtime
+
+    try:
+
+        downstream_token = (
+            await runtime.obo_token_service
+            .get_downstream_token(user)
+        )
+
+        return {
+            "obo_success": True,
+            "expires_on": (
+                downstream_token.expires_on
+            ),
+        }
+
+    except OboTokenExchangeError:
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                "Unable to acquire downstream "
+                "LLM access token."
+            ),
+        )
