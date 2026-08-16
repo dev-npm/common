@@ -680,3 +680,288 @@ async def test_model_creation(
                 "LLM access token."
             ),
         )
+***********************************8
+
+import logging
+
+from langchain_core.messages import HumanMessage
+
+from app.models.chat_models import ChatResponse
+from app.orchestration.request_context import RequestContext
+
+
+logger = logging.getLogger(__name__)
+
+
+class ChatService:
+    """
+    Application service responsible for executing
+    one user chat request.
+
+    For the current step, it invokes the BaseChatModel
+    directly.
+
+    Later, this direct model call will be replaced with
+    the Main Agent Workflow.
+    """
+
+    async def send_message(
+        self,
+        message: str,
+        context: RequestContext,
+    ) -> ChatResponse:
+
+        logger.info(
+            "Chat execution started "
+            "instance_id=%s user_id=%s run_id=%s",
+            context.application_instance_id,
+            context.user_id,
+            context.run_id,
+        )
+
+        try:
+            ai_message = await context.llm_model.ainvoke(
+                [
+                    HumanMessage(
+                        content=message
+                    )
+                ]
+            )
+
+            if isinstance(ai_message.content, str):
+                response_text = ai_message.content
+            else:
+                response_text = str(
+                    ai_message.content
+                )
+
+            logger.info(
+                "Chat execution completed "
+                "instance_id=%s user_id=%s run_id=%s",
+                context.application_instance_id,
+                context.user_id,
+                context.run_id,
+            )
+
+            return ChatResponse(
+                run_id=context.run_id,
+                response=response_text,
+            )
+
+        except Exception:
+            logger.exception(
+                "Chat execution failed "
+                "instance_id=%s user_id=%s run_id=%s",
+                context.application_instance_id,
+                context.user_id,
+                context.run_id,
+            )
+
+            raise
+            *********************
+
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from uuid import uuid4
+
+from app.llm.corporate_model_factory import (
+    CorporateModelFactory,
+)
+from app.security.obo_token_service import (
+    OboTokenService,
+)
+from app.security.token_validator import (
+    EntraTokenValidator,
+)
+from app.services.chat_service import (
+    ChatService,
+)
+
+
+@dataclass(frozen=True)
+class ApplicationRuntime:
+    """
+    Shared application-level services.
+
+    One ApplicationRuntime exists for the lifetime
+    of one FastAPI application process/pod.
+    """
+
+    instance_id: str
+
+    started_at: datetime
+
+    token_validator: EntraTokenValidator
+
+    obo_token_service: OboTokenService
+
+    model_factory: CorporateModelFactory
+
+    chat_service: ChatService
+
+    @classmethod
+    def create(
+        cls,
+        token_validator: EntraTokenValidator,
+        obo_token_service: OboTokenService,
+        model_factory: CorporateModelFactory,
+        chat_service: ChatService,
+    ) -> "ApplicationRuntime":
+
+        return cls(
+            instance_id=str(uuid4()),
+            started_at=datetime.now(
+                timezone.utc
+            ),
+            token_validator=token_validator,
+            obo_token_service=obo_token_service,
+            model_factory=model_factory,
+            chat_service=chat_service,
+        )
+        ((((((((((import logging
+
+from typing import Annotated
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    status,
+)
+
+from app.dependencies.request_context import (
+    get_request_context,
+)
+from app.models.chat_models import (
+    ChatRequest,
+    ChatResponse,
+)
+from app.orchestration.request_context import (
+    RequestContext,
+)
+
+
+logger = logging.getLogger(__name__)
+
+
+router = APIRouter(
+    prefix="/api/chat",
+    tags=["Chat"],
+)
+
+
+@router.post(
+    "",
+    response_model=ChatResponse,
+)
+async def send_message(
+    chat_request: ChatRequest,
+
+    request: Request,
+
+    context: Annotated[
+        RequestContext,
+        Depends(get_request_context),
+    ],
+) -> ChatResponse:
+
+    try:
+        runtime = request.app.state.runtime
+
+        return await runtime.chat_service.send_message(
+            message=chat_request.message,
+            context=context,
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception:
+        logger.exception(
+            "Chat API request failed "
+            "instance_id=%s user_id=%s run_id=%s",
+            context.application_instance_id,
+            context.user_id,
+            context.run_id,
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to process chat request.",
+        )
+
+        ********************
+
+        import logging
+
+from typing import Annotated
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    status,
+)
+
+from app.dependencies.request_context import (
+    get_request_context,
+)
+from app.models.chat_models import (
+    ChatRequest,
+    ChatResponse,
+)
+from app.orchestration.request_context import (
+    RequestContext,
+)
+
+
+logger = logging.getLogger(__name__)
+
+
+router = APIRouter(
+    prefix="/api/chat",
+    tags=["Chat"],
+)
+
+
+@router.post(
+    "",
+    response_model=ChatResponse,
+)
+async def send_message(
+    chat_request: ChatRequest,
+
+    request: Request,
+
+    context: Annotated[
+        RequestContext,
+        Depends(get_request_context),
+    ],
+) -> ChatResponse:
+
+    try:
+        runtime = request.app.state.runtime
+
+        return await runtime.chat_service.send_message(
+            message=chat_request.message,
+            context=context,
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception:
+        logger.exception(
+            "Chat API request failed "
+            "instance_id=%s user_id=%s run_id=%s",
+            context.application_instance_id,
+            context.user_id,
+            context.run_id,
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to process chat request.",
+        )
