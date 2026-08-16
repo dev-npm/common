@@ -642,3 +642,41 @@ async def test_obo(
                 "LLM access token."
             ),
         )
+***********************
+@router.get("/model")
+async def test_model_creation(
+    request: Request,
+
+    user: Annotated[
+        AuthenticatedUser,
+        Depends(get_current_user),
+    ],
+):
+
+    try:
+        downstream_token = (
+            await request.app.state.runtime
+            .obo_token_service
+            .get_downstream_token(user)
+        )
+
+        model = (
+            request.app.state.runtime
+            .model_factory
+            .create(downstream_token)
+        )
+
+        return {
+            "model_created": True,
+            "model_type": type(model).__name__,
+        }
+
+    except OboTokenExchangeError:
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                "Unable to acquire downstream "
+                "LLM access token."
+            ),
+        )
