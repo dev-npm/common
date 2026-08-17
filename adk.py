@@ -1240,3 +1240,44 @@ class ChatService:
             reset_current_llm_model(
                 context_token
             )
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+        from contextvars import ContextVar, Token
+
+from langchain_core.language_models.chat_models import BaseChatModel
+
+
+_current_llm_model: ContextVar[
+    BaseChatModel | None
+] = ContextVar(
+    "current_llm_model",
+    default=None,
+)
+
+
+def set_current_llm_model(
+    model: BaseChatModel,
+) -> Token:
+
+    return _current_llm_model.set(model)
+
+
+def get_current_llm_model() -> BaseChatModel:
+
+    model = _current_llm_model.get()
+
+    if model is None:
+        raise RuntimeError(
+            "No runtime LLM model is available."
+        )
+
+    return model
+
+
+def reset_current_llm_model(
+    reset_handle: Token,
+) -> None:
+
+    _current_llm_model.reset(
+        reset_handle
+    )
