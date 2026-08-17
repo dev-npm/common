@@ -960,8 +960,283 @@ async def send_message(
             context.user_id,
             context.run_id,
         )
+*************&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
+from contextvars import ContextVar, Token
+
+from langchain_core.language_models.chat_models import BaseChatModel
+
+
+_current_llm_model: ContextVar[
+    BaseChatModel | None
+] = ContextVar(
+    "current_llm_model",
+    default=None,
+)
+
+
+def set_current_llm_model(
+    model: BaseChatModel,
+) -> Token:
+    """
+    Set the real user-specific model for
+    the current async execution.
+    """
+
+    return _current_llm_model.set(model)
+
+
+def get_current_llm_model() -> BaseChatModel:
+    """
+    Get the real model for the current execution.
+    """
+
+    model = _current_llm_model.get()
+
+    if model is None:
+        raise RuntimeError(
+            "No runtime LLM model is available "
+            "for the current execution."
+        )
+
+    return model
+
+
+def reset_current_llm_model(
+    token: Token,
+) -> None:
+    """
+    Restore the previous ContextVar value.
+    """
+
+    _current_llm_model.reset(token)
+      
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Unable to process chat request.",
         )
+********************************************
+        from typing import Any
+
+from langchain_core.language_models.chat_models import (
+    BaseChatModel,
+)
+from langchain_core.messages import BaseMessage
+from langchain_core.outputs import (
+    ChatGeneration,
+    ChatResult,
+)
+
+from app.llm.model_context import (
+    get_current_llm_model,
+)
+
+
+class ContextAwareChatModel(BaseChatModel):
+    """
+    Shared chat model used by the application.
+
+    It does not own an Azure token and does not own
+    a user-specific model.
+
+    When invoked, it looks up the real BaseChatModel
+    belonging to the current request and delegates
+    the LLM call to that model.
+    """
+
+    @property
+    def _llm_type(self) -> str:
+        return "context-aware-chat-model"
+
+    def _get_runtime_model(
+        self,
+    ) -> BaseChatModel:
+
+        model = get_current_llm_model()
+
+        if model is self:
+            raise RuntimeError(
+                "ContextAwareChatModel cannot "
+                "delegate to itself."
+            )
+
+        return model
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+
+        runtime_model = (
+            self._get_runtime_model()
+        )
+
+        response = runtime_model.invoke(
+            messages,
+            stop=stop,
+            **kwargs,
+        )
+
+        return ChatResult(
+            generations=[
+                ChatGeneration(
+                    message=response
+                )
+            ]
+        )
+
+    async def _agenerate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+
+        runtime_model = (
+            self._get_runtime_model()
+        )
+
+        response = await runtime_model.ainvoke(
+            messages,
+            stop=stop,
+            **kwargs,
+        )
+
+        return ChatResult(
+            generations=[
+                ChatGeneration(
+                    message=response
+                )
+            ]
+        )
+
+        ********************
+
+        class CorporateModelFactory:
+
+    def create(
+        self,
+        token: DownstreamAccessToken,
+    ) -> BaseChatModel:
+        """
+        Your EXISTING working code.
+
+        Token B -> real model
+        """
+        ...
+
+    def create_context_aware_model(
+        self,
+    ) -> BaseChatModel:
+        """
+        Shared proxy model.
+        No Token B required.
+        """
+
+        return ContextAwareChatModel()
+        ************************8
+
+        import logging
+
+from langchain_core.language_models.chat_models import (
+    BaseChatModel,
+)
+from langchain_core.messages import HumanMessage
+
+from app.llm.model_context import (
+    reset_current_llm_model,
+    set_current_llm_model,
+)
+from app.models.chat_models import ChatResponse
+from app.orchestration.request_context import (
+    RequestContext,
+)
+
+
+logger = logging.getLogger(__name__)
+
+
+class ChatService:
+
+    def __init__(
+        self,
+        model: BaseChatModel,
+    ):
+        self._model = model
+
+    async def send_message(
+        self,
+        message: str,
+        context: RequestContext,
+    ) -> ChatResponse:
+
+        logger.info(
+            "Chat execution started "
+            "instance_id=%s user_id=%s run_id=%s",
+            context.application_instance_id,
+            context.user_id,
+            context.run_id,
+        )
+
+        context_token = (
+            set_current_llm_model(
+                context.llm_model
+            )
+        )
+
+        try:
+
+            ai_message = await self._model.ainvoke(
+                [
+                    HumanMessage(
+                        content=message
+                    )
+                ]
+            )
+
+            if isinstance(
+                ai_message.content,
+                str,
+            ):
+                response_text = (
+                    ai_message.content
+                )
+            else:
+                response_text = str(
+                    ai_message.content
+                )
+
+            logger.info(
+                "Chat execution completed "
+                "instance_id=%s user_id=%s run_id=%s",
+                context.application_instance_id,
+                context.user_id,
+                context.run_id,
+            )
+
+            return ChatResponse(
+                run_id=context.run_id,
+                response=response_text,
+            )
+
+        except Exception:
+
+            logger.exception(
+                "Chat execution failed "
+                "instance_id=%s user_id=%s run_id=%s",
+                context.application_instance_id,
+                context.user_id,
+                context.run_id,
+            )
+
+            raise
+
+        finally:
+
+            reset_current_llm_model(
+                context_token
+            )
