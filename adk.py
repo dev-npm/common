@@ -1,3 +1,250 @@
+import logging
+
+from psycopg_pool import AsyncConnectionPool
+
+from app.models.conversation_models import Conversation
+
+
+logger = logging.getLogger(__name__)
+
+
+class ConversationRepository:
+
+    def __init__(
+        self,
+        pool: AsyncConnectionPool,
+    ):
+        self._pool = pool
+
+    async def create(
+        self,
+        conversation_id: str,
+        user_id: str,
+        title: str | None,
+    ) -> Conversation:
+
+        sql = """
+            INSERT INTO conversation
+            (
+                conversation_id,
+                user_id,
+                title
+            )
+            VALUES
+            (
+                %s,
+                %s,
+                %s
+            )
+            RETURNING
+                conversation_id,
+                user_id,
+                title,
+                created_at,
+                updated_at;
+        """
+
+        async with self._pool.connection() as connection:
+
+            async with connection.cursor() as cursor:
+
+                await cursor.execute(
+                    sql,
+                    (
+                        conversation_id,
+                        user_id,
+                        title,
+                    ),
+                )
+
+                row = await cursor.fetchone()
+
+        if row is None:
+            raise RuntimeError(
+                "Conversation could not be created."
+            )
+
+        logger.info(
+            "Conversation created "
+            "conversation_id=%s user_id=%s",
+            conversation_id,
+            user_id,
+        )
+
+        return Conversation(
+            conversation_id=str(
+                row["conversation_id"]
+            ),
+            user_id=row["user_id"],
+            title=row["title"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    async def get_for_user(
+        self,
+        conversation_id: str,
+        user_id: str,
+    ) -> Conversation | None:
+
+        sql = """
+            SELECT
+                conversation_id,
+                user_id,
+                title,
+                created_at,
+                updated_at
+            FROM conversation
+            WHERE conversation_id = %s
+              AND user_id = %s;
+        """
+
+        async with self._pool.connection() as connection:
+
+            async with connection.cursor() as cursor:
+
+                await cursor.execute(
+                    sql,
+                    (
+                        conversation_id,
+                        user_id,
+                    ),
+                )
+
+                row = await cursor.fetchone()
+
+        if row is None:
+            return None
+
+        return Conversation(
+            conversation_id=str(
+                row["conversation_id"]
+            ),
+            user_id=row["user_id"],
+            title=row["title"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    async def touch(
+        self,
+        conversation_id: str,
+        user_id: str,
+    ) -> None:
+
+        sql = """
+            UPDATE conversation
+            SET updated_at = NOW()
+            WHERE conversation_id = %s
+              AND user_id = %s;
+        """
+
+        async with self._pool.connection() as connection:
+
+            async with connection.cursor() as cursor:
+
+                await cursor.execute(
+                    sql,
+                    (
+                        conversation_id,
+                        user_id,
+                    ),
+                )
+
+***********************************(((((((((((((((((((((((
+import logging
+
+from uuid import uuid4
+
+from app.repositories.conversation_repository import (
+    ConversationRepository,
+)
+
+
+logger = logging.getLogger(__name__)
+
+
+class ConversationNotFoundError(Exception):
+    pass
+
+
+class ConversationService:
+
+    def __init__(
+        self,
+        repository: ConversationRepository,
+    ):
+        self._repository = repository
+
+    async def get_or_create(
+        self,
+        user_id: str,
+        conversation_id: str | None,
+        first_message: str,
+    ) -> str:
+
+        # -----------------------------------------
+        # Existing conversation
+        # -----------------------------------------
+
+        if conversation_id:
+
+            conversation = (
+                await self._repository.get_for_user(
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                )
+            )
+
+            if conversation is None:
+
+                raise ConversationNotFoundError(
+                    "Conversation does not exist "
+                    "or does not belong to this user."
+                )
+
+            await self._repository.touch(
+                conversation_id=conversation_id,
+                user_id=user_id,
+            )
+
+            return conversation_id
+
+        # -----------------------------------------
+        # New conversation
+        # -----------------------------------------
+
+        new_conversation_id = str(uuid4())
+
+        # Temporary title.
+        # Later we can let the LLM generate the title.
+        title = self._create_title(
+            first_message
+        )
+
+        await self._repository.create(
+            conversation_id=new_conversation_id,
+            user_id=user_id,
+            title=title,
+        )
+
+        return new_conversation_id
+
+    @staticmethod
+    def _create_title(
+        message: str,
+    ) -> str:
+
+        message = message.strip()
+
+        if len(message) <= 80:
+            return message
+
+        return message[:77] + "..."
+
+
+
+**********************************************************
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
