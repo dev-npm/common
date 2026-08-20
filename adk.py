@@ -1,3 +1,64 @@
+
+@router.get(
+    "/{conversation_id}/messages",
+    response_model=list[ConversationMessageResponse],
+)
+async def get_conversation_messages(
+    conversation_id: str,
+    request: Request,
+
+    user: Annotated[
+        AuthenticatedUser,
+        Depends(get_current_user),
+    ],
+) -> list[ConversationMessageResponse]:
+
+    runtime = request.app.state.runtime
+
+    # --------------------------------------------
+    # FIRST: verify this conversation belongs
+    # to the logged-in company user
+    # --------------------------------------------
+
+    conversation = (
+        await runtime.conversation_service.get_conversation(
+            conversation_id=conversation_id,
+            company_user_id=user.company_user_id,
+        )
+    )
+
+    if conversation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found.",
+        )
+
+    # --------------------------------------------
+    # THEN: retrieve the messages
+    # --------------------------------------------
+
+    messages = (
+        await runtime.conversation_message_service.get_messages(
+            conversation_id=conversation_id
+        )
+    )
+
+    return [
+        ConversationMessageResponse(
+            message_id=message.message_id,
+            role=message.role,
+            content=message.content,
+            created_at=message.created_at,
+        )
+        for message in messages
+    ]
+
+
+
+MMMMMMMMMMMMMMMMMMMMm
+
+
+
 from app.models.conversation_message_models import (
     ConversationMessage,
 )
