@@ -1,3 +1,121 @@
+app/api/routes/conversation_routes.py
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Request
+
+from app.dependencies.auth_dependency import get_current_user
+from app.models.conversation_models import ConversationListItem
+from app.security.authenticated_user import AuthenticatedUser
+
+
+router = APIRouter(
+    prefix="/api/conversations",
+    tags=["Conversations"],
+)
+
+
+@router.get(
+    "",
+    response_model=list[ConversationListItem],
+)
+async def get_conversations(
+    request: Request,
+
+    user: Annotated[
+        AuthenticatedUser,
+        Depends(get_current_user),
+    ],
+) -> list[ConversationListItem]:
+
+    runtime = request.app.state.runtime
+
+    conversations = (
+        await runtime.conversation_service.list_conversations(
+            company_user_id=user.company_user_id
+        )
+    )
+
+    return [
+        ConversationListItem(
+            conversation_id=conversation.conversation_id,
+            title=conversation.title,
+            created_at=conversation.created_at,
+            updated_at=conversation.updated_at,
+        )
+        for conversation in conversations
+    ]
+^^^^^^^^^^^^^^
+
+async def list_conversations(
+    self,
+    company_user_id: str,
+) -> list[Conversation]:
+
+    return await self._repository.list_for_user(
+        company_user_id=company_user_id
+    )
+app/services/conversation_service.py
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+async def list_for_user(
+    self,
+    company_user_id: str,
+) -> list[Conversation]:
+
+    sql = """
+        SELECT
+            conversation_id,
+            company_user_id,
+            title,
+            created_at,
+            updated_at
+        FROM user_conversation
+        WHERE company_user_id = %s
+        ORDER BY updated_at DESC;
+    """
+
+    async with self._pool.connection() as connection:
+
+        async with connection.cursor() as cursor:
+
+            await cursor.execute(
+                sql,
+                (company_user_id,),
+            )
+
+            rows = await cursor.fetchall()
+
+    return [
+        Conversation(
+            conversation_id=str(
+                row["conversation_id"]
+            ),
+            company_user_id=row["company_user_id"],
+            title=row["title"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+        for row in rows
+    ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+&&&&&&&&&&&*****************&&&&&&&&&&&&&&&&&&&&&&**************
+^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&*************(((((((((((((((^^^^^^^^^^^%%%%%%%%%%%%%%%^&&&&&&&&&&&
+                                                                $$$$$$$$$$$$$$$$$$$
+                                        
 import asyncio
 import selectors
 
