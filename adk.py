@@ -1,3 +1,335 @@
+app/api/routes/conversation_routes.py****************
+@router.get(
+    "/{conversation_id}/messages",
+    response_model=list[ConversationMessageResponse],
+)
+async def get_conversation_messages(
+    conversation_id: str,
+    request: Request,
+
+    user: Annotated[
+        AuthenticatedUser,
+        Depends(get_current_user),
+    ],
+) -> list[ConversationMessageResponse]:
+
+    runtime = request.app.state.runtime
+
+    # -----------------------------------------
+    # SECURITY:
+    # First verify conversation belongs to user
+    # -----------------------------------------
+
+    conversation = (
+        await runtime.conversation_service.get_conversation(
+            conversation_id=conversation_id,
+            company_user_id=user.company_user_id,
+        )
+    )
+
+    if conversation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found.",
+        )
+
+    messages = (
+        await runtime.conversation_message_service.get_messages(
+            conversation_id=conversation_id
+        )
+    )
+
+    return [
+        ConversationMessageResponse(
+            message_id=message.message_id,
+            role=message.role,
+            content=message.content,
+            created_at=message.created_at,
+        )
+        for message in messages
+    ]
+    
+
+app/api/routes/conversation_routes.py****************
+***********app/services/conversation_message_service.py
+
+from app.models.conversation_message_models import (
+    ConversationMessage,
+)
+
+from app.repositories.conversation_message_repository import (
+    ConversationMessageRepository,
+)
+
+
+class ConversationMessageService:
+
+    def __init__(
+        self,
+        repository: ConversationMessageRepository,
+    ):
+        self._repository = repository
+
+    async def save_user_message(
+        self,
+        conversation_id: str,
+        content: str,
+    ) -> ConversationMessage:
+
+        return await self._repository.create(
+            conversation_id=conversation_id,
+            role="user",
+            content=content,
+        )
+
+    async def save_assistant_message(
+        self,
+        conversation_id: str,
+        content: str,
+    ) -> ConversationMessage:
+
+        return await self._repository.create(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=content,
+        )
+
+    async def get_messages(
+        self,
+        conversation_id: str,
+    ) -> list[ConversationMessage]:
+
+        return await self._repository.list_for_conversation(
+            conversation_id=conversation_id
+        )
+
+
+
+
+
+
+
+
+
+
+
+app/services/conversation_message_service.py
+
+**********************from uuid import uuid4
+
+from psycopg_pool import AsyncConnectionPool
+
+from app.models.conversation_message_models import (
+    ConversationMessage,
+)
+
+
+class ConversationMessageRepository:
+
+    def __init__(
+        self,
+        pool: AsyncConnectionPool,
+    ):
+        self._pool = pool
+
+    async def create(
+        self,
+        conversation_id: str,
+        role: str,
+        content: str,
+    ) -> ConversationMessage:
+
+        message_id = str(uuid4())
+
+        sql = """
+            INSERT INTO user_conversation_message
+            (
+                message_id,
+                conversation_id,
+                role,
+                content
+            )
+            VALUES (%s, %s, %s, %s)
+            RETURNING
+                message_id,
+                conversation_id,
+                role,
+                content,
+                created_at;
+        """
+
+        async with self._pool.connection() as connection:
+            async with connection.cursor() as cursor:
+
+                await cursor.execute(
+                    sql,
+                    (
+                        message_id,
+                        conversation_id,
+                        role,
+                        content,
+                    ),
+                )
+
+                row = await cursor.fetchone()
+
+        if row is None:
+            raise RuntimeError(
+                "Conversation message could not be created."
+            )
+
+        return ConversationMessage(
+            message_id=str(row["message_id"]),
+            conversation_id=str(row["conversation_id"]),
+            role=row["role"],
+            content=row["content"],
+            created_at=row["created_at"],
+        )
+
+    async def list_for_conversation(
+        self,
+        conversation_id: str,
+    ) -> list[ConversationMessage]:
+
+        sql = """
+            SELECT
+                message_id,
+                conversation_id,
+                role,
+                content,
+                created_at
+            FROM user_conversation_message
+            WHERE conversation_id = %s
+            ORDER BY created_at ASC;
+        """
+
+        async with self._pool.connection() as connection:
+            async with connection.cursor() as cursor:
+
+                await cursor.execute(
+                    sql,
+                    (conversation_id,),
+                )
+
+                rows = await cursor.fetchall()
+
+        return [
+            ConversationMessage(
+                message_id=str(row["message_id"]),
+                conversation_id=str(row["conversation_id"]),
+                role=row["role"],
+                content=row["content"],
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]from uuid import uuid4
+
+from psycopg_pool import AsyncConnectionPool
+
+from app.models.conversation_message_models import (
+    ConversationMessage,
+)
+
+
+class ConversationMessageRepository:
+
+    def __init__(
+        self,
+        pool: AsyncConnectionPool,
+    ):
+        self._pool = pool
+
+    async def create(
+        self,
+        conversation_id: str,
+        role: str,
+        content: str,
+    ) -> ConversationMessage:
+
+        message_id = str(uuid4())
+
+        sql = """
+            INSERT INTO user_conversation_message
+            (
+                message_id,
+                conversation_id,
+                role,
+                content
+            )
+            VALUES (%s, %s, %s, %s)
+            RETURNING
+                message_id,
+                conversation_id,
+                role,
+                content,
+                created_at;
+        """
+
+        async with self._pool.connection() as connection:
+            async with connection.cursor() as cursor:
+
+                await cursor.execute(
+                    sql,
+                    (
+                        message_id,
+                        conversation_id,
+                        role,
+                        content,
+                    ),
+                )
+
+                row = await cursor.fetchone()
+
+        if row is None:
+            raise RuntimeError(
+                "Conversation message could not be created."
+            )
+
+        return ConversationMessage(
+            message_id=str(row["message_id"]),
+            conversation_id=str(row["conversation_id"]),
+            role=row["role"],
+            content=row["content"],
+            created_at=row["created_at"],
+        )
+
+    async def list_for_conversation(
+        self,
+        conversation_id: str,
+    ) -> list[ConversationMessage]:
+
+        sql = """
+            SELECT
+                message_id,
+                conversation_id,
+                role,
+                content,
+                created_at
+            FROM user_conversation_message
+            WHERE conversation_id = %s
+            ORDER BY created_at ASC;
+        """
+
+        async with self._pool.connection() as connection:
+            async with connection.cursor() as cursor:
+
+                await cursor.execute(
+                    sql,
+                    (conversation_id,),
+                )
+
+                rows = await cursor.fetchall()
+
+        return [
+            ConversationMessage(
+                message_id=str(row["message_id"]),
+                conversation_id=str(row["conversation_id"]),
+                role=row["role"],
+                content=row["content"],
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]
 app/api/routes/conversation_routes.py
 
 from typing import Annotated
