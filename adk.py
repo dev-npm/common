@@ -1,3 +1,46 @@
+import asyncio
+import selectors
+
+import uvicorn
+
+
+def create_selector_loop():
+    """
+    Create the Windows SelectorEventLoop required
+    by async Psycopg.
+    """
+
+    return asyncio.SelectorEventLoop(
+        selectors.SelectSelector()
+    )
+
+
+async def main() -> None:
+
+    config = uvicorn.Config(
+        "app.main:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=False,
+    )
+
+    server = uvicorn.Server(config)
+
+    # IMPORTANT:
+    # We call serve(), NOT uvicorn.run().
+    #
+    # This lets our outer asyncio.run()
+    # own the event loop.
+    await server.serve()
+
+
+if __name__ == "__main__":
+
+    asyncio.run(
+        main(),
+        loop_factory=create_selector_loop,
+    )
+
 import logging
 
 from psycopg_pool import AsyncConnectionPool
