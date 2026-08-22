@@ -1,3 +1,67 @@
+@router.get("/test-model-stream")
+async def test_model_stream(
+    context: RequestContext = Depends(
+        get_request_context
+    ),
+):
+    """
+    TEMPORARY endpoint.
+
+    Tests whether ContextAwareChatModel can stream
+    from the request-specific real LLM model.
+    """
+
+    context_aware_model = ContextAwareChatModel()
+
+    reset_handle = set_current_llm_model(
+        context.llm_model
+    )
+
+    chunks: list[str] = []
+
+    try:
+
+        async for chunk in context_aware_model.astream(
+            [
+                HumanMessage(
+                    content=(
+                        "Explain dependency injection "
+                        "in three short sentences."
+                    )
+                )
+            ]
+        ):
+
+            content = chunk.content
+
+            print(
+                "STREAM CHUNK:",
+                repr(content),
+                flush=True,
+            )
+
+            if isinstance(content, str):
+                chunks.append(content)
+
+    finally:
+
+        reset_current_llm_model(
+            reset_handle
+        )
+
+    return {
+        "chunk_count": len(chunks),
+        "answer": "".join(chunks),
+    }
+
+
+
+
+
+
+
+)))))))))))))))))))))))))))))))))))))))((((((((((((((((((((((((((((******************************
+
 conversation_message_repository
 from psycopg_pool import AsyncConnectionPool
 
