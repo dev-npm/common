@@ -1,0 +1,655 @@
+src/app/models/conversation.model.ts
+
+export interface Conversation {
+  conversation_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConversationMessage {
+  message_id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  status: 'pending' | 'completed' | 'failed';
+  response_time_ms: number | null;
+}
+GET /api/conversations
+
+GET /api/conversations/{conversation_id}/messages
+
+getConversations(): Observable<Conversation[]> {
+
+  return this.http.get<Conversation[]>(
+    this.conversationUrl
+  );
+}
+
+
+getConversationMessages(
+  conversationId: string
+): Observable<ConversationMessage[]> {
+
+  return this.http.get<ConversationMessage[]>(
+    `${this.conversationUrl}/${encodeURIComponent(
+      conversationId
+    )}/messages`
+  );
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ChatService {
+
+  private readonly baseUrl =
+    '/api/chat';
+
+  private readonly conversationUrl =
+    '/api/conversations';
+
+  constructor(
+    private readonly http: HttpClient
+  ) {
+  }
+
+
+  // EXISTING
+  streamMessage(...) {
+    // keep your working code
+  }
+
+
+  // NEW
+  getConversations():
+    Observable<Conversation[]> {
+
+    return this.http.get<Conversation[]>(
+      this.conversationUrl
+    );
+  }
+
+
+  // NEW
+  getConversationMessages(
+    conversationId: string
+  ): Observable<ConversationMessage[]> {
+
+    return this.http.get<ConversationMessage[]>(
+      `${this.conversationUrl}/${encodeURIComponent(
+        conversationId
+      )}/messages`
+    );
+  }
+}
+
+
+
+******************
+
+export interface UiChatMessage {
+
+  messageId?: number;
+
+  role: 'user' | 'assistant';
+
+  content: string;
+
+  status?:
+    | 'pending'
+    | 'streaming'
+    | 'completed'
+    | 'failed';
+
+  createdAt?: string;
+
+  responseTimeMs?: number | null;
+}
+
+Step 4 — Add state to your chat component
+
+In your existing chat component:
+
+import {
+  Conversation
+} from '../models/conversation.model';
+
+Add:
+
+conversations: Conversation[] = [];
+
+messages: UiChatMessage[] = [];
+
+conversationId: string | null = null;
+
+isLoadingConversations = false;
+
+isLoadingMessages = false;
+
+isStreaming = false;
+
+*****************************8
+
+loadConversations(): void {
+
+  this.isLoadingConversations = true;
+
+  this.chatService
+    .getConversations()
+    .subscribe({
+
+      next: (conversations) => {
+
+        this.conversations =
+          conversations;
+
+        this.isLoadingConversations =
+          false;
+      },
+
+      error: (error) => {
+
+        this.isLoadingConversations =
+          false;
+
+        console.error(
+          'Unable to load conversations',
+          error
+        );
+      }
+    });
+}
+********************
+Step 6 — Add conversation selection
+
+This is the important method.
+
+Add:
+
+selectConversation(
+  conversation: Conversation
+): void {
+
+  /*
+   * Until we implement Stop Generating,
+   * don't allow switching conversations
+   * while one is actively streaming.
+   */
+  if (this.isStreaming) {
+    return;
+  }
+
+  if (
+    this.conversationId ===
+    conversation.conversation_id
+  ) {
+    return;
+  }
+
+  this.conversationId =
+    conversation.conversation_id;
+
+  this.loadConversationMessages(
+    conversation.conversation_id
+  );
+}
+
+*******
+
+Step 7 — Load the selected conversation's messages
+
+Add:
+
+loadConversationMessages(
+  conversationId: string
+): void {
+
+  this.isLoadingMessages = true;
+
+  /*
+   * Clear previous conversation immediately.
+   */
+  this.messages = [];
+
+  this.chatService
+    .getConversationMessages(
+      conversationId
+    )
+    .subscribe({
+
+      next: (messages) => {
+
+        this.messages = messages.map(
+          message => ({
+            messageId:
+              message.message_id,
+
+            role:
+              message.role,
+
+            content:
+              message.content,
+
+            status:
+              message.status,
+
+            createdAt:
+              message.created_at,
+
+            responseTimeMs:
+              message.response_time_ms
+          })
+        );
+
+        this.isLoadingMessages = false;
+      },
+
+      error: (error) => {
+
+        this.isLoadingMessages = false;
+
+        console.error(
+          'Unable to load conversation messages',
+          error
+        );
+      }
+    });
+}
+
+%%%%%%%%%%%%%%
+
+
+Step 9 — Add New Chat
+
+Add:
+
+newChat(): void {
+
+  if (this.isStreaming) {
+    return;
+  }
+
+  this.conversationId = null;
+
+  this.messages = [];
+}
+
+That's all.
+
+Do not call the backend to create a conversation yet.
+
+Remember our design:
+
+New Chat clicked
+      ↓
+conversationId = null
+
+User types:
+"Hello"
+      ↓
+POST /api/chat/stream
+
+{
+   message: "Hello",
+   conversation_id: null
+}
+
+      ↓
+
+ConversationService
+      ↓
+creates new UUID
+      ↓
+start event returns conversation_id
+
+So clicking New Chat itself does not create an empty DB conversation.
+
+That's desirable.
+
+Step 10 — Save the new conversation ID from start
+
+Your existing streaming handler should already contain:
+
+case 'start':
+
+  this.conversationId =
+    event.conversation_id;
+
+  break;
+
+Keep that.
+
+Therefore:
+
+New Chat
+
+conversationId = null
+
+        ↓
+
+first message
+
+        ↓
+
+Backend creates:
+
+C400
+
+        ↓
+
+start event
+
+{
+   conversation_id: "C400"
+}
+
+        ↓
+
+Angular
+
+conversationId = C400
+
+Every subsequent message stays on:
+
+C400
+Step 11 — Refresh sidebar when response finishes
+
+Inside your existing streaming:
+
+case 'done':
+
+you probably have:
+
+case 'done':
+
+  assistantMessage.content =
+    event.answer;
+
+  assistantMessage.status =
+    'completed';
+
+  assistantMessage.messageId =
+    event.assistant_message_id;
+
+  this.conversationId =
+    event.conversation_id;
+
+  break;
+
+Add one line:
+
+this.loadConversations();
+
+So:
+
+case 'done':
+
+  assistantMessage.content =
+    event.answer;
+
+  assistantMessage.status =
+    'completed';
+
+  assistantMessage.messageId =
+    event.assistant_message_id;
+
+  this.conversationId =
+    event.conversation_id;
+
+  /*
+   * Refresh sidebar.
+   *
+   * This also moves the current conversation
+   * upward because updated_at changed.
+   */
+  this.loadConversations();
+
+  break;
+
+Now:
+
+C100
+C200
+C300
+
+User talks in C200.
+
+Backend updates:
+
+C200.updated_at
+
+Refresh:
+
+C200   ← latest
+C100
+C300
+
+**********8
+
+chat.component.html
+
+<div class="chat-layout">
+
+  <!-- ====================================== -->
+  <!-- CONVERSATION SIDEBAR                   -->
+  <!-- ====================================== -->
+
+  <aside class="conversation-sidebar">
+
+    <button
+      type="button"
+      class="new-chat-button"
+      [disabled]="isStreaming"
+      (click)="newChat()">
+
+      + New Chat
+
+    </button>
+
+
+    <div
+      *ngIf="isLoadingConversations"
+      class="conversation-loading">
+
+      Loading conversations...
+
+    </div>
+
+
+    <div
+      *ngIf="
+        !isLoadingConversations &&
+        conversations.length === 0
+      "
+      class="conversation-empty">
+
+      No conversations yet.
+
+    </div>
+
+
+    <div
+      class="conversation-list">
+
+      <button
+        *ngFor="let conversation of conversations"
+        type="button"
+        class="conversation-item"
+        [class.selected]="
+          conversationId ===
+          conversation.conversation_id
+        "
+        [disabled]="isStreaming"
+        (click)="selectConversation(conversation)">
+
+        <div class="conversation-title">
+
+          {{
+            conversation.title ||
+            'New conversation'
+          }}
+
+        </div>
+
+        <div class="conversation-date">
+
+          {{
+            conversation.updated_at
+              | date:'short'
+          }}
+
+        </div>
+
+      </button>
+
+    </div>
+
+  </aside>
+
+
+  <!-- ====================================== -->
+  <!-- CHAT AREA                              -->
+  <!-- ====================================== -->
+
+  <main class="chat-content">
+
+
+    <div
+      *ngIf="isLoadingMessages"
+      class="messages-loading">
+
+      Loading messages...
+
+    </div>
+
+
+    <div
+      *ngIf="!isLoadingMessages"
+      class="messages">
+
+      <div
+        *ngFor="let message of messages"
+        class="message"
+        [class.user-message]="
+          message.role === 'user'
+        "
+        [class.assistant-message]="
+          message.role === 'assistant'
+        ">
+
+        <div class="message-role">
+
+          {{
+            message.role === 'user'
+              ? 'You'
+              : 'Assistant'
+          }}
+
+        </div>
+
+        <div class="message-content">
+
+          {{ message.content }}
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!--
+      KEEP YOUR EXISTING MESSAGE INPUT
+      AND SEND BUTTON HERE.
+    -->
+
+
+  </main>
+
+</div>
+
+.chat-layout {
+  display: flex;
+  height: 100%;
+  min-height: 600px;
+}
+
+
+.conversation-sidebar {
+  width: 280px;
+  border-right: 1px solid #ddd;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+
+.new-chat-button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+
+.conversation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+
+.conversation-item {
+  width: 100%;
+  text-align: left;
+  padding: 10px;
+  border: 0;
+  cursor: pointer;
+}
+
+
+.conversation-item.selected {
+  font-weight: 600;
+}
+
+
+.conversation-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+.conversation-date {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+
+.chat-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+}
+
+
+.message {
+  margin-bottom: 16px;
+}
+
+
+.message-role {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+
+.message-content {
+  white-space: pre-wrap;
+}
